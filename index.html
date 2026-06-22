@@ -100,10 +100,22 @@
 
     <main class="flex-1 flex flex-col min-w-0 bg-[#f4f7f6]">
         
-        <header class="bg-white p-4 flex justify-between items-center md:hidden shadow-sm z-20">
-            <div class="flex items-center gap-2 font-black text-gray-800"><i class="fa-solid fa-pepper-hot text-emerald-600"></i> CHILI POS</div>
-            <button onclick="openLogoutModal()" class="text-red-500 w-8 h-8 flex items-center justify-center bg-red-50 rounded-full"><i class="fa-solid fa-power-off"></i></button>
-        </header>
+<header class="bg-white p-4 flex justify-between items-center md:hidden shadow-sm z-20">
+    <div class="flex items-center gap-2 font-black text-gray-800">
+        <i class="fa-solid fa-leaf text-sage-600"></i> LINK NEO MEAL
+    </div>
+    
+    <div class="flex items-center gap-3">
+        <div class="flex items-center gap-2 bg-sage-50 px-3 py-1.5 rounded-full border border-sage-100">
+            <i class="fa-solid fa-user text-[10px] text-sage-600"></i>
+            <p id="m-cashier-name" class="text-[10px] font-black text-sage-700 uppercase tracking-wide">Kasir</p>
+        </div>
+        
+        <button onclick="openLogoutModal()" class="text-red-500 w-8 h-8 flex items-center justify-center bg-red-50 rounded-full hover:bg-red-100 transition">
+            <i class="fa-solid fa-power-off text-xs"></i>
+        </button>
+    </div>
+</header>
 
         <div class="flex-1 overflow-hidden relative">
 

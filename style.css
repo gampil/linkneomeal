@@ -96,3 +96,19 @@ input, select, textarea {
 .cat-btn:active {
     transform: scale(0.92);
 }
+/* Pastikan sidebar yang mengecil tidak menumpuk konten */
+@media (min-width: 768px) {
+    #main-content {
+        padding-left: 2rem; /* Jarak standar saat sidebar terbuka */
+    }
+}
+
+/* Memastikan nama kasir muncul di mobile */
+#mobile-profile {
+    display: flex; /* Aktifkan flex untuk mobile */
+}
+@media (min-width: 768px) {
+    #mobile-profile {
+        display: none; /* Sembunyikan di desktop */
+    }
+}

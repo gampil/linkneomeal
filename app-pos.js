@@ -182,6 +182,9 @@ function listenToActiveSession() {
 
         const loginOverlay = document.getElementById('login-overlay');
         const activeCashierLabel = document.getElementById('active-cashier-name');
+            if (activeCashierLabel) activeCashierLabel.innerText = currentCashier;
+const mName = document.getElementById('m-cashier-name');
+            if (mName) mName.innerText = currentCashier;
 
         if (activeSessionFound) {
             loginOverlay.classList.add('hidden');
@@ -1606,6 +1609,7 @@ let isSidebarOpen = true;
 
 function toggleSidebar() {
     const sidebar = document.querySelector('aside');
+    const main = document.getElementById('main-content');
     
     // Jika diklik tapi tidak ada sidebar (misal di tampilan HP), abaikan.
     if (!sidebar) return; 
@@ -1619,6 +1623,7 @@ function toggleSidebar() {
         // PERINTAH MELIPAT SIDEBAR
         sidebar.classList.remove('lg:w-64');
         sidebar.classList.add('lg:w-[90px]'); // Sidebar mengecil
+        main.classList.add('md:ml-[90px]');
         
         // Sembunyikan semua teks
         if (logoText) logoText.style.display = 'none';
@@ -1628,6 +1633,7 @@ function toggleSidebar() {
         // PERINTAH MEMBUKA SIDEBAR
         sidebar.classList.remove('lg:w-[90px]');
         sidebar.classList.add('lg:w-64'); // Sidebar kembali lebar
+        main.classList.remove('md:ml-[90px]');
         
         // Munculkan kembali teks
         if (logoText) logoText.style.display = '';
