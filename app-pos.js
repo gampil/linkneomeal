@@ -109,56 +109,57 @@ function getFormattedDate() {
     return `${d}/${m}/${y} ${hh}:${mm}`;
 }
 
-document.addEventListener("DOMContentLoaded", async () => {
+document.addEventListener("DOMContentLoaded", () => {
     // Jalankan Real-time Session Listener mendeteksi shift aktif menggantung
     listenToActiveSession();
     
-    renderAllUI();
     setCustomerMode('new');
 
     const imageInput = document.getElementById('prod-image-file');
     if (imageInput) imageInput.addEventListener('change', handleImageUpload);
 
-    document.querySelectorAll('.nav-btn').forEach(btn => btn.style.opacity = '0.5');
-    await refreshDataFromServer();
-    document.querySelectorAll('.nav-btn').forEach(btn => btn.style.opacity = '1');
+    // AKTIFKAN SENSOR REAL-TIME (Menggantikan fungsi refresh lama)
+    setupRealtimeListeners();
 });
 
 // ------------------------------------------------------------------------
 // FUNGSI TARIK DATA DARI FIREBASE (YANG SEMPAT HILANG)
 // ------------------------------------------------------------------------
-async function refreshDataFromServer() {
-    try {
-        // Tarik data produk
-        const prodSnap = await db.ref('products').once('value');
+// FUNGSI BARU: MENDENGARKAN PERUBAHAN DATABASE SECARA REAL-TIME
+function setupRealtimeListeners() {
+    // 1. Listener Real-time Produk
+    db.ref('products').on('value', (snap) => {
         products = [];
-        if (prodSnap.exists()) {
-            prodSnap.forEach(child => { products.push(child.val()); });
+        if (snap.exists()) {
+            snap.forEach(child => { products.push(child.val()); });
         }
+        // Layar otomatis update setiap ada perubahan harga/stok dari HP owner
+        renderKasirProducts();
+        renderProductTable();
+    });
 
-        // Tarik data transaksi
-        const trxSnap = await db.ref('transactions').once('value');
+    // 2. Listener Real-time Transaksi (Tetap batasi 100 agar ringan!)
+    db.ref('transactions').orderByKey().limitToLast(100).on('value', (snap) => {
         transactions = [];
-        if (trxSnap.exists()) {
-            trxSnap.forEach(child => { transactions.push(child.val()); });
+        if (snap.exists()) {
+            snap.forEach(child => { transactions.push(child.val()); });
         }
-        // Balik urutan transaksi agar yang terbaru ada di atas
-        transactions.reverse();
+        transactions.reverse(); // Balik agar yang terbaru di atas
+        
+        // Otomatis update riwayat struk dan laporan keuangan
+        renderStrukList();
+        renderPromoCustomers();
+        calculateFinancials();
+    });
 
-        // --- MULAI PENAMBAHAN: Tarik data pelanggan (Member) ---
-        const custSnap = await db.ref('customers').once('value');
+    // 3. Listener Real-time Pelanggan/Member
+    db.ref('customers').on('value', (snap) => {
         savedCustomersArray = [];
-        if (custSnap.exists()) {
-            custSnap.forEach(child => { savedCustomersArray.push(child.val()); });
+        if (snap.exists()) {
+            snap.forEach(child => { savedCustomersArray.push(child.val()); });
         }
-        // --- SELESAI PENAMBAHAN ---
-
-        // Render ulang antarmuka setelah data lengkap
-        renderAllUI();
-    } catch (error) {
-        console.error("Gagal menarik data dari server:", error);
-        showToast('Gagal memuat data. Periksa koneksi internet.', 'error');
-    }
+        renderCustomerList();
+    });
 }
 
 // ------------------------------------------------------------------------
@@ -255,6 +256,9 @@ async function handleLogin() {
 // ------------------------------------------------------------------------
 // FUNGSI ABSENSI (DILENGKAPI PELACAK GPS REAL-TIME)
 // ------------------------------------------------------------------------
+// ------------------------------------------------------------------------
+// FUNGSI ABSENSI (DENGAN PELACAK GPS REAL-TIME)
+// ------------------------------------------------------------------------
 async function processAbsensi(name) {
     const sessionId = 'ABSEN-' + Date.now();
     const loginTime = getFormattedDate();
@@ -264,15 +268,17 @@ async function processAbsensi(name) {
     btn.innerHTML = `<i class="fa-solid fa-location-dot animate-bounce"></i> Mengunci Lokasi GPS...`;
     btn.disabled = true;
 
-    let locationData = '-';
-
-    // Fungsi pencari GPS (Maksimal nunggu 8 detik agar tidak nge-hang jika sinyal susah)
+    // Fungsi pencari GPS (Maksimal nunggu 8 detik)
     const getGPS = () => new Promise((resolve) => {
         if (!navigator.geolocation) {
             resolve('Browser tidak mendukung GPS');
         } else {
             navigator.geolocation.getCurrentPosition(
-                (pos) => resolve(`https://www.google.com/maps?q=${pos.coords.latitude},${pos.coords.longitude}`),
+                (pos) => {
+                    // Membuat link Google Maps dari koordinat
+                    const mapLink = `https://www.google.com/maps?q=${pos.coords.latitude},${pos.coords.longitude}`;
+                    resolve(mapLink);
+                },
                 (err) => resolve('Akses GPS ditolak / Sinyal lemah'),
                 { enableHighAccuracy: true, timeout: 8000 } 
             );
@@ -280,7 +286,7 @@ async function processAbsensi(name) {
     });
 
     // Tunggu hasil GPS didapatkan
-    locationData = await getGPS();
+    const locationData = await getGPS();
 
     showToast('Merekam data kehadiran...', 'loading');
 
@@ -290,7 +296,60 @@ async function processAbsensi(name) {
         cashierName: name,
         loginTime: loginTime,
         logoutTime: '-',
-        loginLocation: locationData, // <--- Link Google Maps terisi otomatis di sini!
+        loginLocation: locationData, // Link Google Maps tersimpan di sini!
+        status: 'Sedang Bekerja'
+    }).then(() => {
+        btn.innerHTML = `Buka Kasir <i class="fa-solid fa-arrow-right text-xs"></i>`;
+        btn.disabled = false;
+        showToast('Berhasil Buka Kasir!', 'success');
+    }).catch(e => {
+        console.error(e);
+        showToast('Gagal absen, periksa koneksi internet.', 'error');
+        btn.innerHTML = `Buka Kasir <i class="fa-solid fa-arrow-right text-xs"></i>`;
+        btn.disabled = false;
+    });
+}
+// ------------------------------------------------------------------------
+// FUNGSI ABSENSI (DENGAN PELACAK GPS REAL-TIME)
+// ------------------------------------------------------------------------
+async function processAbsensi(name) {
+    const sessionId = 'ABSEN-' + Date.now();
+    const loginTime = getFormattedDate();
+    const btn = document.getElementById('btn-login');
+
+    // Ubah visual tombol agar kasir tahu sistem sedang mencari lokasi
+    btn.innerHTML = `<i class="fa-solid fa-location-dot animate-bounce"></i> Mengunci Lokasi GPS...`;
+    btn.disabled = true;
+
+    // Fungsi pencari GPS (Maksimal nunggu 8 detik)
+    const getGPS = () => new Promise((resolve) => {
+        if (!navigator.geolocation) {
+            resolve('Browser tidak mendukung GPS');
+        } else {
+            navigator.geolocation.getCurrentPosition(
+                (pos) => {
+                    // Membuat link Google Maps dari koordinat
+                    const mapLink = `https://www.google.com/maps?q=${pos.coords.latitude},${pos.coords.longitude}`;
+                    resolve(mapLink);
+                },
+                (err) => resolve('Akses GPS ditolak / Sinyal lemah'),
+                { enableHighAccuracy: true, timeout: 8000 } 
+            );
+        }
+    });
+
+    // Tunggu hasil GPS didapatkan
+    const locationData = await getGPS();
+
+    showToast('Merekam data kehadiran...', 'loading');
+
+    // Simpan data absensi masuk ke Firebase beserta link GPS-nya
+    db.ref('attendance/' + sessionId).set({
+        id: sessionId,
+        cashierName: name,
+        loginTime: loginTime,
+        logoutTime: '-',
+        loginLocation: locationData, // Link Google Maps tersimpan di sini!
         status: 'Sedang Bekerja'
     }).then(() => {
         btn.innerHTML = `Buka Kasir <i class="fa-solid fa-arrow-right text-xs"></i>`;
@@ -464,25 +523,47 @@ async function handleImageUpload(event) {
 }
 
 function renderProductTable() {
-    const tbody = document.getElementById('product-table-body');
-    if (!tbody) return;
-    tbody.innerHTML = products.length === 0 ? `<tr><td colspan="6" class="text-center p-6 text-gray-400 text-sm">Belum ada data.</td></tr>` : '';
+    const container = document.getElementById('product-table-body');
+    if (!container) return;
+    
+    // Tampilan jika produk kosong
+    if (products.length === 0) {
+        container.innerHTML = `<div class="col-span-full text-center py-10 text-gray-400 text-sm flex flex-col items-center"><i class="fa-solid fa-box-open text-4xl mb-2 opacity-50"></i> Belum ada data produk.</div>`;
+        return;
+    }
+
+    let htmlBuffer = '';
+    
     products.forEach(p => {
-        tbody.innerHTML += `
-            <tr class="border-b border-gray-100 hover:bg-sage-50/50 text-sm transition-colors">                
-                <td class="p-3 text-center"><img src="${p.image || fallbackImage}" class="w-12 h-12 object-cover rounded-xl mx-auto border shadow-xs"></td>
-                <td class="p-3 font-semibold text-gray-800">${p.name}</td>
-                <td class="p-3 text-gray-500"><span class="bg-gray-100 px-2 py-0.5 rounded-md text-xs">${p.category || 'Lainnya'}</span></td>
-                <td class="p-3 text-center font-bold ${p.stock <= 3 ? 'text-red-500' : 'text-gray-700'}">${p.stock || 0}</td>
-                <td class="p-3 text-right font-medium text-gray-800">Rp ${(parseInt(p.price)||0).toLocaleString('id-ID')}</td>
-                <td class="p-3 text-center">
-                    <div class="flex justify-center gap-2">
-                        <button onclick="editProduct('${p.id}')" class="text-blue-600 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-xl text-xs font-semibold">Edit</button>
-                        <button onclick="deleteProduct('${p.id}')" class="text-red-600 bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-xl text-xs font-semibold">Hapus</button>
+        const isLowStock = (parseInt(p.stock) || 0) <= 3;
+        
+        // Desain Kartu List (Bukan Tabel)
+        htmlBuffer += `
+            <div class="bg-white border border-gray-100 p-3 rounded-2xl shadow-[0_2px_8px_rgba(0,0,0,0.02)] flex gap-3 items-center hover:shadow-md hover:border-sage-200 transition-all">
+                
+                <img src="${p.image || fallbackImage}" loading="lazy" class="w-14 h-14 object-cover rounded-xl border border-gray-100 shrink-0 shadow-inner">
+                
+                <div class="flex-1 min-w-0">
+                    <h4 class="font-bold text-gray-800 text-sm truncate" title="${p.name}">${p.name}</h4>
+                    <div class="flex items-center gap-1.5 mt-1">
+                        <span class="text-[11px] font-black text-sage-600">Rp ${(parseInt(p.price)||0).toLocaleString('id-ID')}</span>
+                        <span class="text-[9px] px-1.5 py-0.5 rounded-md font-bold ${isLowStock ? 'bg-red-50 text-red-500 border border-red-100' : 'bg-gray-100 text-gray-500 border border-gray-200'}">
+                            Stok: ${p.stock || 0}
+                        </span>
                     </div>
-                </td>
-            </tr>`;
+                    <p class="text-[9px] text-gray-400 mt-0.5">${p.category || 'Lainnya'}</p>
+                </div>
+                
+                <div class="flex flex-col gap-1.5 shrink-0">
+                    <button onclick="editProduct('${p.id}')" class="w-14 bg-blue-50 hover:bg-blue-500 text-blue-600 hover:text-white py-1.5 rounded-lg text-[10px] font-bold transition-colors shadow-sm active:scale-95">Edit</button>
+                    <button onclick="deleteProduct('${p.id}')" class="w-14 bg-red-50 hover:bg-red-500 text-red-500 hover:text-white py-1.5 rounded-lg text-[10px] font-bold transition-colors shadow-sm active:scale-95">Hapus</button>
+                </div>
+                
+            </div>`;
     });
+    
+    // Inject ke HTML sekaligus agar performa cepat
+    container.innerHTML = htmlBuffer;
 }
 
 async function saveProduct(e) {
@@ -503,7 +584,7 @@ async function saveProduct(e) {
         await db.ref('products/' + payload.id).set(payload);
         showToast('Produk berhasil disimpan!', 'success');
         resetProductForm(); 
-        await refreshDataFromServer(); 
+         
     } catch(err) { 
         console.error(err); 
         showToast('Gagal menyimpan ke database.', 'error');
@@ -534,7 +615,7 @@ async function deleteProduct(id) {
     try {
         await db.ref('products/' + id).remove();
         showToast('Produk berhasil dihapus!', 'success');
-        await refreshDataFromServer();
+        
     } catch(e) { console.error(e); showToast('Gagal menghapus produk.', 'error'); } 
     finally { document.body.style.cursor = 'default'; }
 }
@@ -562,57 +643,64 @@ function filterCategory(cat) {
 function renderKasirProducts() {
     const grid = document.getElementById('kasir-products-grid');
     if (!grid) return;
+    
+    grid.classList.add('min-h-0'); 
     const searchQuery = document.getElementById('search-product').value.toLowerCase();
-    grid.innerHTML = '';
     
     const filtered = products.filter(p => p.name.toLowerCase().includes(searchQuery) && (selectedCategory === 'Semua' || (p.category || 'Lainnya') === selectedCategory));
     
     if(filtered.length === 0) { 
-        grid.innerHTML = `<div class="col-span-full text-center text-gray-400 text-sm py-12 flex flex-col items-center"><i class="fa-solid fa-box-open text-4xl mb-3 opacity-20"></i>Produk tidak ditemukan</div>`; 
+        grid.innerHTML = `<div class="col-span-full text-center text-gray-400 text-sm py-12 flex flex-col items-center"><i class="fa-solid fa-box-open text-4xl mb-3 opacity-20"></i>Menu tidak ditemukan</div>`; 
         return; 
     }
     
+    let htmlBuffer = '';
+    
     filtered.forEach(p => {
-        // Cari index item di cart untuk mengetahui kuantitasnya
-        const cartIndex = cart.findIndex(i => String(i.id) === String(p.id));
-        const qtyPicked = cartIndex !== -1 ? cart[cartIndex].qty : 0;
+        const cartItem = cart.find(i => String(i.id) === String(p.id));
+        const qtyPicked = cartItem ? cartItem.qty : 0;
         const isOut = (parseInt(p.stock) || 0) <= 0;
         
-        // Style kartu diubah menjadi cursor-pointer dan merespon klik
+        // KEMBALI KE WARNA HIJAU TERANG (EMERALD)
         let cardStyle = isOut 
-            ? 'opacity-60 bg-gray-50 border-gray-200 grayscale cursor-not-allowed' 
-            : (qtyPicked > 0 ? 'bg-emerald-50/50 border-emerald-500 shadow-md ring-1 ring-emerald-500 cursor-pointer active:scale-95' : 'bg-white border-gray-100 hover:shadow-lg hover:-translate-y-1 transition-all duration-200 cursor-pointer active:scale-95');
-
-        // Tag Vegan / Non-Veg
-        const isVeg = p.category === 'Minuman' ? 'Veg' : 'Non Veg';
-        const vegColor = isVeg === 'Veg' ? 'text-emerald-500' : 'text-red-500';
-        const vegIcon = isVeg === 'Veg' ? 'fa-leaf' : 'fa-drumstick-bite';
+            ? 'opacity-50 border-gray-200 bg-gray-50 pointer-events-none grayscale' 
+            : (qtyPicked > 0 
+                ? 'border-[#059669] bg-[#ecfdf5] shadow-[0_4px_12px_rgba(5,150,105,0.15)] ring-1 ring-[#059669] scale-[0.98]' 
+                : 'border-gray-200 bg-white hover:border-[#34d399] hover:shadow-lg hover:-translate-y-1');
+            
+        const badgeHtml = qtyPicked > 0 
+            ? `<div class="absolute top-2.5 left-2.5 bg-[#059669] text-white font-black text-[11px] px-2 py-1 rounded-md shadow-md z-10 flex items-center gap-1">
+                 <i class="fa-solid fa-check text-[9px]"></i> ${qtyPicked}x
+               </div>` 
+            : '';
+            
+        const stockLabelHtml = isOut 
+            ? `<span class="bg-red-500 text-white text-[9px] px-1.5 py-0.5 rounded flex items-center font-black tracking-wide">HABIS</span>` 
+            : `<span class="text-[9px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded font-bold border border-gray-200">Stok: ${p.stock || 0}</span>`;
         
-        // Logika klik: Jika stok habis, klik dimatikan. Jika ada, jalankan addToCart.
-        const clickHandler = isOut ? "" : `onclick="addToCart('${p.id}', '${p.name.replace(/'/g, "\\'")}', ${p.price}, ${p.stock || 0})"`;
-
-        grid.innerHTML += `
-            <div ${clickHandler} class="relative border rounded-[20px] p-2.5 sm:p-3 flex flex-col justify-between overflow-hidden shadow-sm select-none ${cardStyle}">
+        htmlBuffer += `
+            <div onclick="addToCart('${p.id}', '${p.name.replace(/'/g, "\\'")}', ${p.price}, ${p.stock || 0})" class="relative border rounded-2xl p-3 cursor-pointer flex flex-col h-full transition-all duration-300 ${cardStyle} will-change-transform">
                 
-                ${qtyPicked > 0 ? `<div class="absolute top-2 left-2 bg-amber-400 text-white font-black text-[11px] px-2 py-1 rounded-lg z-10 shadow-sm">${qtyPicked}x</div>` : ''}
+                ${badgeHtml}
                 
-                <div class="h-20 sm:h-28 mb-2 sm:mb-3 bg-gray-100 rounded-xl overflow-hidden shrink-0 relative pointer-events-none">
-                    <img src="${p.image || fallbackImage}" class="w-full h-full object-cover" alt="${p.name}">
-                    ${isOut ? `<div class="absolute inset-0 bg-black/40 flex items-center justify-center"><span class="bg-red-600 text-white text-[10px] font-black px-2 py-1 rounded">HABIS</span></div>` : ''}
+                <div class="w-full aspect-[4/3] rounded-xl overflow-hidden mb-3 shrink-0 shadow-sm border border-gray-100/50 bg-gray-50">
+                    <img src="${p.image || fallbackImage}" loading="lazy" class="w-full h-full object-cover ${isOut ? 'grayscale contrast-75' : ''}">
                 </div>
                 
-                <div class="flex-1 flex flex-col justify-between pointer-events-none">
-                    <span class="font-bold text-xs sm:text-sm text-gray-800 leading-tight line-clamp-2 min-h-[34px] mb-1">${p.name}</span>
+                <div class="flex flex-col flex-1">
+                    <span class="font-bold text-xs sm:text-sm ${isOut ? 'text-gray-400 line-through' : 'text-gray-800'} line-clamp-2 leading-snug">${p.name}</span>
                     
-                    <div class="flex justify-between items-center mt-1">
-                        <span class="text-emerald-600 font-black text-xs sm:text-sm">Rp ${(parseInt(p.price)||0).toLocaleString('id-ID')}</span>
-                        <div class="flex items-center gap-1 text-[9px] font-bold ${vegColor} bg-gray-50 px-1.5 py-0.5 rounded border border-gray-100">
-                            <i class="fa-solid ${vegIcon}"></i> <span class="hidden sm:inline">${isVeg}</span>
-                        </div>
+                    <div class="mt-auto pt-3 flex justify-between items-end border-t border-dashed ${qtyPicked > 0 ? 'border-[#059669]/30' : 'border-gray-200/80'}">
+                        <span class="${isOut ? 'text-gray-400 font-bold' : (qtyPicked > 0 ? 'text-[#047857] font-black' : 'text-[#059669] font-extrabold')} text-xs sm:text-sm">
+                            Rp ${(parseInt(p.price)||0).toLocaleString('id-ID')}
+                        </span>
+                        ${stockLabelHtml}
                     </div>
                 </div>
             </div>`;
     });
+    
+    grid.innerHTML = htmlBuffer;
 }
 
 function addToCart(id, name, price, currentStock) {
@@ -670,33 +758,29 @@ function setOrderType(type) {
 }
 
 function setPaymentMethod(method) {
-    // Simpan nilai ke input tersembunyi
     document.getElementById('pay-method').value = method;
     
     const btnTunai = document.getElementById('btn-pay-tunai');
     const btnQris = document.getElementById('btn-pay-qris');
     const btnDebit = document.getElementById('btn-pay-debit');
     
-    // Style Tema Emerald Baru untuk tombol aktif & non-aktif
-    const activeStyle = "py-2.5 px-1 text-[11px] sm:text-xs font-bold bg-emerald-600 text-white border border-emerald-600 rounded-xl shadow-sm text-center transition-all";
-    const inactiveStyle = "py-2.5 px-1 text-[11px] sm:text-xs font-bold bg-gray-50 text-gray-500 border border-gray-200 hover:bg-gray-100 rounded-xl text-center transition-all";
+    // KEMBALI KE WARNA HIJAU TERANG (#059669)
+    const activeStyle = "py-2 px-1 text-[11px] font-bold bg-[#059669] text-white border border-[#059669] rounded-lg shadow-sm transition text-center";
+    const inactiveStyle = "py-2 px-1 text-[11px] font-bold bg-white text-gray-500 border border-gray-200 hover:bg-gray-50 rounded-lg transition text-center";
     
-    // Reset semua tombol menjadi non-aktif terlebih dahulu (jika elemennya ada)
     if(btnTunai) btnTunai.className = inactiveStyle;
     if(btnQris) btnQris.className = inactiveStyle;
     if(btnDebit) btnDebit.className = inactiveStyle;
     
-    // Berikan warna hijau Emerald aktif hanya pada tombol yang diklik
     if (method === 'Tunai' && btnTunai) btnTunai.className = activeStyle;
     if (method === 'QRIS' && btnQris) btnQris.className = activeStyle;
     if (method === 'Debit' && btnDebit) btnDebit.className = activeStyle;
     
-    // Jalankan logika input uang tunai
     const cashInput = document.getElementById('pay-cash');
     if (cashInput) {
         if (method !== 'Tunai') { 
             cashInput.setAttribute('disabled', 'true'); 
-            cashInput.classList.add('opacity-50'); // Efek visual redup jika bukan tunai
+            cashInput.classList.add('opacity-50');
         } else { 
             cashInput.value = ''; 
             cashInput.removeAttribute('disabled'); 
@@ -704,7 +788,6 @@ function setPaymentMethod(method) {
         }
     }
     
-    // Refresh kalkulasi
     renderCart();
 }
 
@@ -811,7 +894,6 @@ function renderCart() {
                                 <i class="fa-solid fa-plus text-[10px]"></i>
                             </button>
                         </div>
-                        
                     </div>
                 </div>
                 <div class="text-right pl-2 flex flex-col justify-between items-end h-14">
@@ -821,18 +903,7 @@ function renderCart() {
             </div>`;
     });
 
-    // Kalkulasi Total & Diskon
-    const finalTotal = subtotal; 
-    
-    // Update teks di Sidebar
-    if (document.getElementById('txt-subtotal')) document.getElementById('txt-subtotal').innerText = `Rp ${subtotal.toLocaleString('id-ID')}`;
-    if (document.getElementById('txt-total')) document.getElementById('txt-total').innerText = `Rp ${finalTotal.toLocaleString('id-ID')}`;
-    if (document.getElementById('sidebar-total')) document.getElementById('sidebar-total').innerText = `Rp ${finalTotal.toLocaleString('id-ID')}`;
-    if (document.getElementById('pay-cash') && document.getElementById('pay-method').value !== 'Tunai') {
-        document.getElementById('pay-cash').value = finalTotal;
-    }
-    
-    // Update teks di Modal Pembayaran (Termasuk Diskon jika ada)
+    // KALKULASI DISKON
     const discountInput = document.getElementById('pay-discount-percent');
     let discountCalculated = 0;
     if (discountInput) {
@@ -846,21 +917,46 @@ function renderCart() {
         }
     }
     
-    const afterDiscount = Math.max(0, subtotal - discountCalculated);
-    if (document.getElementById('txt-total-modal')) document.getElementById('txt-total-modal').innerText = `Rp ${afterDiscount.toLocaleString('id-ID')}`;
+    // PERBAIKAN: Total akhir setelah dikurangi diskon
+    const finalTotal = Math.max(0, subtotal - discountCalculated);
     
-    // Cek uang kembalian jika form pembayaran sedang aktif
+    // Update Subtotal (Mentah)
+    if (document.getElementById('txt-subtotal')) document.getElementById('txt-subtotal').innerText = `Rp ${subtotal.toLocaleString('id-ID')}`;
+    if (document.getElementById('txt-subtotal-modal')) document.getElementById('txt-subtotal-modal').innerText = `Rp ${subtotal.toLocaleString('id-ID')}`;
+    
+    // Update TOTAL AKHIR (Setelah Diskon) ke semua layar
+    if (document.getElementById('txt-total')) document.getElementById('txt-total').innerText = `Rp ${finalTotal.toLocaleString('id-ID')}`;
+    if (document.getElementById('txt-total-modal')) document.getElementById('txt-total-modal').innerText = `Rp ${finalTotal.toLocaleString('id-ID')}`;
+    if (document.getElementById('sidebar-total')) document.getElementById('sidebar-total').innerText = `Rp ${finalTotal.toLocaleString('id-ID')}`;
+    
+    // Auto-isi uang tunai jika mode QRIS/Debit
+    if (document.getElementById('pay-cash') && document.getElementById('pay-method').value !== 'Tunai') {
+        document.getElementById('pay-cash').value = finalTotal;
+    }
+    
+    // Panggil ulang perhitungan uang kembalian
     if(typeof calculateChange === 'function') calculateChange();
 }
 
 function calculateChange() {
-    const total = parseInt(document.getElementById('txt-total').innerText.replace(/[^0-9]/g, '')) || 0;
+    // Ambil angka dari Total Modal yang sudah terpotong diskon
+    const totalEl = document.getElementById('txt-total-modal');
+    if (!totalEl) return;
+    
+    const total = parseInt(totalEl.innerText.replace(/[^0-9]/g, '')) || 0;
     const cash = parseInt(document.getElementById('pay-cash').value) || 0;
     const change = cash - total;
     const changeEl = document.getElementById('txt-change');
+    
     if (!changeEl) return;
-    if (change >= 0) { changeEl.innerText = `Rp ${change.toLocaleString('id-ID')}`; changeEl.className = "font-bold text-amber-600 text-sm"; } 
-    else { changeEl.innerText = 'Kurang Uang'; changeEl.className = "font-extrabold text-red-600 text-sm"; }
+    
+    if (change >= 0) { 
+        changeEl.innerText = `Rp ${change.toLocaleString('id-ID')}`; 
+        changeEl.className = "font-bold text-amber-600 text-sm pt-2"; 
+    } else { 
+        changeEl.innerText = 'Kurang Uang'; 
+        changeEl.className = "font-extrabold text-red-600 text-sm pt-2"; 
+    }
 }
 
 function showToast(message, type = 'info') {
@@ -1217,11 +1313,68 @@ function openInvoiceModal(trx) {
 }
 
 // Fungsi untuk memanggil modal preview berdasarkan ID transaksi
-function openInvoiceModalById(trxId) {
-    const trx = transactions.find(t => t.id === trxId);
-    if (trx) {
-        openInvoiceModal(trx);
+function openInvoiceModal(trx) {
+    let sub = 0;
+    
+    // 1. HEADER & META DATA
+    let html = `
+        <div class="text-center font-black text-sm mb-1 tracking-wider">LINK NEO MEAL</div>
+        <div class="border-t-[1.5px] border-dashed border-gray-800 my-2"></div>
+        <div class="grid grid-cols-[70px_1fr] gap-1 text-[11px] text-gray-700">
+            <div class="text-gray-500">ID</div><div class="font-bold">: ${trx.id}</div>
+            <div class="text-gray-500">Waktu</div><div class="font-bold">: ${trx.date}</div>
+            <div class="text-gray-500">Kasir</div><div class="font-bold">: ${trx.cashier}</div>
+            <div class="text-gray-500">Tipe</div><div class="font-bold">: ${trx.orderType || 'Dine In'}</div>
+        </div>
+        <div class="border-t border-dashed border-gray-400 my-2"></div>
+    `;
+    
+    // 2. DAFTAR ITEM (Lebih rapi dengan nama di atas, harga di bawah)
+    trx.items.forEach(i => {
+        sub += (i.price * i.qty);
+        html += `
+            <div class="text-[11px] mb-2">
+                <div class="font-bold text-gray-800">${i.name}</div>
+                <div class="flex justify-between text-gray-600">
+                    <span>${i.qty} x Rp ${parseInt(i.price).toLocaleString('id-ID')}</span>
+                    <span>Rp ${(i.price * i.qty).toLocaleString('id-ID')}</span>
+                </div>
+            </div>`;
+    });
+    
+    // 3. RINGKASAN HARGA (Kelompokkan Subtotal & Diskon)
+    html += `<div class="border-t border-dashed border-gray-400 my-2"></div>`;
+    html += `<div class="flex justify-between text-[11px] text-gray-600"><span>Subtotal</span><span>Rp ${sub.toLocaleString('id-ID')}</span></div>`;
+    
+    if (trx.discount > 0) {
+        html += `<div class="flex justify-between text-[11px] text-red-600 font-bold"><span>Diskon</span><span>-Rp ${trx.discount.toLocaleString('id-ID')}</span></div>`;
     }
+    
+    // 4. TOTAL (Ditebalkan dan dipisah dengan garis)
+    html += `
+        <div class="flex justify-between font-black text-[13px] text-gray-900 mt-2 border-t border-gray-800 pt-2">
+            <span>TOTAL</span>
+            <span>Rp ${(parseInt(trx.total)||0).toLocaleString('id-ID')}</span>
+        </div>
+    `;
+    
+    // 5. STATUS PEMBAYARAN (Di bawah Total untuk menunjukkan realisasi pembayaran)
+    html += `
+        <div class="mt-2 space-y-0.5 text-[11px] text-gray-700">
+            <div class="flex justify-between"><span>Bayar (${trx.method})</span><span>Rp ${parseInt(trx.cash||0).toLocaleString('id-ID')}</span></div>
+            <div class="flex justify-between font-bold text-emerald-700"><span>Kembali</span><span>Rp ${parseInt(trx.change||0).toLocaleString('id-ID')}</span></div>
+        </div>
+    `;
+    
+    // 6. FOOTER (Penutup yang manis)
+    html += `
+        <div class="border-t border-dashed border-gray-400 my-3"></div>
+        <div class="text-center italic text-[10px] text-gray-500 px-2">"${trx.quote || 'Terima kasih atas kunjungan Anda'}"</div>
+        <div class="border-t-[1.5px] border-dashed border-gray-800 my-2"></div>
+    `;
+
+    document.getElementById('receipt-preview-container').innerHTML = html;
+    document.getElementById('invoice-modal').classList.remove('hidden');
 }
 
 // Fungsi untuk menutup modal
@@ -1237,104 +1390,94 @@ async function printThermal(trxId) {
     const trx = transactions.find(t => t.id === trxId); 
     if (!trx) return;
     
-    // Validasi apakah browser mendukung Bluetooth
     if (!navigator.bluetooth) {
-        alert("Peringatan: Browser atau perangkat ini tidak mendukung Bluetooth Web. Gunakan Google Chrome versi terbaru.");
+        alert("Peringatan: Browser tidak mendukung Bluetooth Web.");
         return;
     }
     
-    // Proses koneksi printer
+    // Koneksi printer
     if (!bleCharacteristic || !bleDevice || !bleDevice.gatt.connected) { 
         try {
             const conn = await connectBluetooth(); 
-            if (!conn) {
-                alert("Koneksi gagal! Pastikan printer bluetooth menyala, siap (tidak berkedip merah), dan izinkan akses di browser.");
-                return; 
-            }
-        } catch (e) {
-            console.error("Gagal saat mencoba konek: ", e);
-            alert("Terjadi kesalahan saat memindai printer bluetooth.");
-            return;
-        }
+            if (!conn) return; 
+        } catch (e) { return; }
     }
     
     try {
         const enc = new TextEncoder('utf-8'); 
         const I = new Uint8Array([27, 64]); 
-        const C = new Uint8Array([27, 97, 1]); 
-        const L = new Uint8Array([27, 97, 0]); 
-        const B1 = new Uint8Array([27, 69, 1]); 
-        const B0 = new Uint8Array([27, 69, 0]); 
+        const C = new Uint8Array([27, 97, 1]); // Center
+        const L = new Uint8Array([27, 97, 0]); // Left
+        const B1 = new Uint8Array([27, 69, 1]); // Bold On
+        const B0 = new Uint8Array([27, 69, 0]); // Bold Off
         const LF = new Uint8Array([10]);
         
         const w = async (t) => { 
             const b = typeof t === 'string' ? enc.encode(t) : t; 
-            if (bleCharacteristic.properties.writeWithoutResponse) {
-                await bleCharacteristic.writeValueWithoutResponse(b); 
-            } else {
-                await bleCharacteristic.writeValue(b); 
-            }
+            if (bleCharacteristic.properties.writeWithoutResponse) await bleCharacteristic.writeValueWithoutResponse(b); 
+            else await bleCharacteristic.writeValue(b); 
             await new Promise(r => setTimeout(r, 50)); 
         };
         
+        // 1. HEADER
         await w(I); await w(C); await w(B1); 
         await w("LINK NEO MEAL\n"); 
-        await w(B0); 
-        await w("================================\n"); 
-        await w(L);
+        await w(B0); await w("--------------------------------\n"); 
         
-        await w(`ID     : ${trx.id}\n`); 
-        await w(`Tgl    : ${trx.date}\n`); 
-        await w(`Kasir  : ${trx.cashier}\n`);
-        await w(`Cust   : ${trx.customer}\n`);
-        await w(`Tipe   : ${trx.orderType || 'Dine In'}\n`);
+        // 2. META DATA
+        await w(L);
+        await w(`ID    : ${trx.id}\n`); 
+        await w(`Waktu : ${trx.date}\n`); 
+        await w(`Kasir : ${trx.cashier}\n`);
+        await w(`Tipe  : ${trx.orderType || 'Dine In'}\n`);
         await w("--------------------------------\n");
         
+        // 3. DAFTAR ITEM
         let sub = 0;
         for (const i of (Array.isArray(trx.items) ? trx.items : [])) {
             await w(`${i.name}\n`); 
             sub += (i.price * i.qty);
             
-            let d = `  ${i.qty} x Rp ${parseInt(i.price).toLocaleString('id-ID')}`; 
-            let s = `Rp ${(i.price * i.qty).toLocaleString('id-ID')}\n`;
-            await w(d + " ".repeat(Math.max(1, 32 - (d.length + s.length - 1))) + s);
+            let d = `${i.qty} x Rp ${parseInt(i.price).toLocaleString('id-ID')}`; 
+            let s = `Rp ${(i.price * i.qty).toLocaleString('id-ID')}`;
+            // Kalkulasi spasi agar harga rata kanan (32 karakter total)
+            let space = " ".repeat(Math.max(1, 32 - (d.length + s.length)));
+            await w(d + space + s + "\n");
         }
         await w("--------------------------------\n");
         
+        // 4. RINGKASAN HARGA
+        let subTxt = `Rp ${sub.toLocaleString('id-ID')}`;
+        await w("Subtotal" + " ".repeat(32 - (8 + subTxt.length)) + subTxt + "\n");
+        
         if (trx.discount > 0) {
-            let sb = `Rp ${sub.toLocaleString('id-ID')}\n`; 
-            await w("Subtotal : " + " ".repeat(Math.max(1, 32 - (11 + sb.length - 1))) + sb);
-            
-            let ds = `-Rp ${trx.discount.toLocaleString('id-ID')}\n`; 
-            await w("Diskon   : " + " ".repeat(Math.max(1, 32 - (11 + ds.length - 1))) + ds);
+            let dTxt = `-Rp ${trx.discount.toLocaleString('id-ID')}`;
+            await w("Diskon" + " ".repeat(32 - (6 + dTxt.length)) + dTxt + "\n");
         }
         
+        // 5. TOTAL
         await w(B1); 
-        let t = `Rp ${(parseInt(trx.total)||0).toLocaleString('id-ID')}\n`; 
-        await w("TOTAL    : " + " ".repeat(Math.max(1, 32 - (11 + t.length - 1))) + t); 
+        let tTxt = `Rp ${(parseInt(trx.total)||0).toLocaleString('id-ID')}`; 
+        await w("TOTAL" + " ".repeat(32 - (5 + tTxt.length)) + tTxt + "\n"); 
         await w(B0);
         
-        let byr = `Rp ${parseInt(trx.cash||0).toLocaleString('id-ID')}\n`; 
-        await w("Bayar    : " + " ".repeat(Math.max(1, 32 - (11 + byr.length - 1))) + byr); 
+        // 6. STATUS PEMBAYARAN
+        let bTxt = `Rp ${parseInt(trx.cash||0).toLocaleString('id-ID')}`;
+        await w(`Bayar (${trx.method})` + " ".repeat(Math.max(1, 32 - (13 + bTxt.length))) + bTxt + "\n"); 
         
-        let kmb = `Rp ${parseInt(trx.change||0).toLocaleString('id-ID')}\n`; 
-        await w("Kembali  : " + " ".repeat(Math.max(1, 32 - (11 + kmb.length - 1))) + kmb);
+        let kTxt = `Rp ${parseInt(trx.change||0).toLocaleString('id-ID')}`;
+        await w("Kembali" + " ".repeat(32 - (7 + kTxt.length)) + kTxt + "\n");
         
-        await w(`Metode   : ${trx.method}\n`);
-        
-        await w("================================\n"); 
+        // 7. FOOTER
+        await w("--------------------------------\n"); 
         await w(C); 
-        await w(`"${trx.quote || 'Stay aesthetic.'}"\n`); 
-        await w("================================\n");
+        await w(`"${trx.quote || 'Terima kasih'}"\n`); 
         
         for (let f = 0; f < 4; f++) await w(LF);
         
     } catch (err) { 
         console.error(err);
-        alert("Printer sibuk, kertas habis, atau koneksi terputus tiba-tiba."); 
-        // Kosongkan variabel bluetooth agar sistem memaksa mencari ulang perangkat saat diklik lagi
-        bleCharacteristic = null;
-        bleDevice = null;
+        alert("Printer error. Pastikan printer menyala."); 
     }
 }
 
@@ -1454,4 +1597,43 @@ async function manualPrintClosing() {
             btn.disabled = false;
         }
     }
+}
+
+// ==========================================================================
+// FUNGSI TOGGLE SIDEBAR (Melipat Menu Kiri)
+// ==========================================================================
+let isSidebarOpen = true;
+
+function toggleSidebar() {
+    const sidebar = document.querySelector('aside');
+    
+    // Jika diklik tapi tidak ada sidebar (misal di tampilan HP), abaikan.
+    if (!sidebar) return; 
+
+    // Mencari elemen-elemen teks di dalam sidebar untuk disembunyikan
+    const logoText = sidebar.querySelector('h1');
+    const menuTexts = sidebar.querySelectorAll('nav span');
+    const operatorInfo = sidebar.querySelector('.truncate'); // Memilih bungkus teks profil bawah
+
+    if (isSidebarOpen) {
+        // PERINTAH MELIPAT SIDEBAR
+        sidebar.classList.remove('lg:w-64');
+        sidebar.classList.add('lg:w-[90px]'); // Sidebar mengecil
+        
+        // Sembunyikan semua teks
+        if (logoText) logoText.style.display = 'none';
+        if (operatorInfo) operatorInfo.style.display = 'none';
+        menuTexts.forEach(txt => txt.style.display = 'none');
+    } else {
+        // PERINTAH MEMBUKA SIDEBAR
+        sidebar.classList.remove('lg:w-[90px]');
+        sidebar.classList.add('lg:w-64'); // Sidebar kembali lebar
+        
+        // Munculkan kembali teks
+        if (logoText) logoText.style.display = '';
+        if (operatorInfo) operatorInfo.style.display = '';
+        menuTexts.forEach(txt => txt.style.display = '');
+    }
+    
+    isSidebarOpen = !isSidebarOpen;
 }

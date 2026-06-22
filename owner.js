@@ -444,6 +444,17 @@ function renderLogAbsensi() {
             let statusBadge = a.status === 'Sedang Bekerja' 
                 ? `<span class="bg-sage-50 text-sage-600 px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider border border-sage-100"><i class="fa-solid fa-circle-play mr-1 animate-pulse"></i>Aktif</span>`
                 : `<span class="bg-gray-100 text-gray-500 px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider border border-gray-200"><i class="fa-solid fa-check mr-1"></i>Selesai</span>`;
+            
+            // LOGIKA LINK GPS
+            // Jika ada data lokasi, tampilkan tombolnya. Jika '-', berarti lokasi gagal didapat.
+            const gpsButton = (a.loginLocation && a.loginLocation !== '-') 
+                ? `<a href="${a.loginLocation}" target="_blank" class="w-full bg-blue-50 text-blue-600 hover:bg-blue-500 hover:text-white transition-colors border border-blue-100 py-2.5 rounded-xl text-[11px] font-bold flex justify-center items-center gap-2 mt-3">
+                    <i class="fa-solid fa-map-location-dot"></i> Lihat Titik Lokasi Login
+                   </a>`
+                : `<div class="w-full bg-red-50 text-red-500 border border-red-100 py-2.5 rounded-xl text-[11px] font-bold flex justify-center items-center mt-3">
+                    <i class="fa-solid fa-circle-xmark mr-2"></i> Lokasi tidak ditemukan
+                   </div>`;
+
             html += `
                 <div class="bg-white p-4 rounded-2xl shadow-sm border border-sage-100">
                     <div class="flex justify-between items-start border-b border-gray-50 pb-3 mb-3">
@@ -459,7 +470,7 @@ function renderLogAbsensi() {
                         ${statusBadge}
                     </div>
                     
-                    <div class="grid grid-cols-2 gap-3 mb-3">
+                    <div class="grid grid-cols-2 gap-3">
                         <div class="bg-gray-50 border border-gray-100 rounded-xl p-2.5 text-center">
                             <p class="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-0.5">Jam Masuk</p>
                             <p class="text-xs font-bold text-gray-700">${a.loginTime}</p>
@@ -469,10 +480,7 @@ function renderLogAbsensi() {
                             <p class="text-xs font-bold text-gray-700">${a.logoutTime || '-'}</p>
                         </div>
                     </div>
-
-                    <a href="${a.loginLocation}" target="_blank" class="w-full bg-blue-50 text-blue-600 hover:bg-blue-500 hover:text-white transition-colors border border-blue-100 py-2.5 rounded-xl text-[11px] font-bold flex justify-center items-center gap-2">
-                        <i class="fa-solid fa-map-location-dot"></i> Buka Titik Maps GPS
-                    </a>
+                    ${gpsButton}
                 </div>`;
         });
         listContainer.innerHTML = html;
