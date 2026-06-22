@@ -112,3 +112,11 @@ input, select, textarea {
         display: none; /* Sembunyikan di desktop */
     }
 }
+aside {
+    overflow: hidden; /* Mencegah teks meluber saat transisi */
+    transition: width 0.3s ease;
+}
+
+.nav-text {
+    transition: opacity 0.2s ease;
+}

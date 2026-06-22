@@ -5,17 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Owner Panel - LINK NEO MEAL</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        sage: { 50: '#f4f7f4', 100: '#e3eae2', 200: '#c7d5c5', 500: '#8ba352', 600: '#708238', 700: '#5a682d', 800: '#434e21' }
-                    }
-                }
-            }
-        }
-    </script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
@@ -24,192 +13,352 @@
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
     <style>
-        .hide-scroll::-webkit-scrollbar { display: none; }
-        .hide-scroll { -ms-overflow-style: none; scrollbar-width: none; }
-        body { background-color: #f4f7f4; }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #e5e7eb; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #d1d5db; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
+        .glass-panel { background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(10px); }
     </style>
 </head>
-<body class="text-gray-800 font-sans min-h-screen pb-20 md:pb-0 selection:bg-sage-200">
+<body class="bg-[#f4f7f6] text-gray-800 font-sans h-screen overflow-hidden flex relative selection:bg-emerald-200">
 
-    <header class="bg-white border-b border-sage-100 px-5 py-4 flex justify-between items-center sticky top-0 z-50 shadow-sm">
-        <div class="flex items-center gap-3">
-            <div class="bg-sage-600 w-9 h-9 rounded-xl flex items-center justify-center text-white shadow-md">
-                <i class="fa-solid fa-leaf text-sm"></i>
+    <!-- SIDEBAR DESKTOP -->
+    <aside class="w-64 bg-white border-r border-gray-100 flex flex-col justify-between hidden md:flex z-20 shadow-[4px_0_24px_rgba(0,0,0,0.02)] transition-all duration-300">
+        <div class="p-6">
+            <div class="flex items-center gap-3 mb-10 overflow-hidden">
+                <div class="w-10 h-10 bg-emerald-50 rounded-full flex items-center justify-center text-emerald-600 border border-emerald-100 shrink-0">
+                    <i class="fa-solid fa-crown"></i>
+                </div>
+                <h1 class="nav-text text-lg font-black tracking-tight text-gray-800 whitespace-nowrap">OWNER PANEL</h1>
             </div>
-            <div>
-                <h1 class="text-sm font-black text-gray-800 leading-tight tracking-wide">LINK NEO MEAL</h1>
-                <span class="text-[9px] font-bold text-sage-700 bg-sage-100 px-2 py-0.5 rounded-full uppercase tracking-widest mt-0.5 inline-block">Panel Owner</span>
+            <nav class="space-y-1.5 overflow-y-auto no-scrollbar max-h-[calc(100vh-220px)]">
+                <button onclick="switchTab('keuangan')" id="tab-desktop-keuangan" class="nav-btn w-full flex items-center gap-4 p-3.5 rounded-2xl bg-emerald-600 text-white font-bold transition shadow-md shadow-emerald-200/50">
+                    <i class="fa-solid fa-chart-line text-lg w-5 text-center shrink-0"></i> <span class="nav-text text-sm whitespace-nowrap">Analisis Bisnis</span>
+                </button>
+                <button onclick="switchTab('produk')" id="tab-desktop-produk" class="nav-btn w-full flex items-center gap-4 p-3.5 rounded-2xl text-gray-500 hover:bg-gray-50 hover:text-emerald-600 font-semibold transition">
+                    <i class="fa-solid fa-boxes-stacked text-lg w-5 text-center shrink-0"></i> <span class="nav-text text-sm whitespace-nowrap">Manajemen Menu</span>
+                </button>
+                <button onclick="switchTab('pengaturan')" id="tab-desktop-pengaturan" class="nav-btn w-full flex items-center gap-4 p-3.5 rounded-2xl text-gray-500 hover:bg-gray-50 hover:text-emerald-600 font-semibold transition">
+                    <i class="fa-solid fa-users-gear text-lg w-5 text-center shrink-0"></i> <span class="nav-text text-sm whitespace-nowrap">Akses Kasir (PIN)</span>
+                </button>
+                <button onclick="switchTab('rekapabsensi')" id="tab-desktop-rekapabsensi" class="nav-btn w-full flex items-center gap-4 p-3.5 rounded-2xl text-gray-500 hover:bg-gray-50 hover:text-emerald-600 font-semibold transition">
+                    <i class="fa-solid fa-calendar-check text-lg w-5 text-center shrink-0"></i> <span class="nav-text text-sm whitespace-nowrap">Rekap Kehadiran</span>
+                </button>
+                <button onclick="switchTab('absensi')" id="tab-desktop-absensi" class="nav-btn w-full flex items-center gap-4 p-3.5 rounded-2xl text-gray-500 hover:bg-gray-50 hover:text-emerald-600 font-semibold transition">
+                    <i class="fa-solid fa-list-check text-lg w-5 text-center shrink-0"></i> <span class="nav-text text-sm whitespace-nowrap">Riwayat Absen</span>
+                </button>
+                <button onclick="switchTab('void')" id="tab-desktop-void" class="nav-btn w-full flex items-center gap-4 p-3.5 rounded-2xl text-gray-500 hover:bg-gray-50 hover:text-emerald-600 font-semibold transition">
+                    <i class="fa-solid fa-triangle-exclamation text-lg w-5 text-center shrink-0"></i> <span class="nav-text text-sm whitespace-nowrap">Log Void / Hapus</span>
+                </button>
+            </nav>
+        </div>
+        
+        <div class="p-6 border-t border-gray-100 overflow-hidden">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 bg-gray-100 text-gray-600 rounded-full flex items-center justify-center font-bold text-sm shrink-0">
+                    <i class="fa-solid fa-user-tie"></i>
+                </div>
+                <div class="nav-text truncate">
+                    <p class="text-sm font-bold text-gray-800 truncate">Administrator</p>
+                    <p class="text-[10px] text-emerald-600 font-bold">Akses Penuh</p>
+                </div>
             </div>
         </div>
-    </header>
+    </aside>
 
-    <div class="max-w-7xl mx-auto flex flex-col md:flex-row min-h-[calc(100vh-69px)]">
+    <!-- AREA KONTEN UTAMA -->
+    <main class="flex-1 flex flex-col min-w-0 bg-[#f4f7f6] overflow-hidden">
         
-        <nav class="hidden md:flex flex-col w-64 bg-white border-r border-sage-100 p-4 space-y-2 shrink-0 h-[calc(100vh-69px)] sticky top-[69px]">
-            <button onclick="switchTab('keuangan')" id="tab-desktop-keuangan" class="w-full text-left px-4 py-3.5 rounded-xl font-bold text-sage-700 bg-sage-100 transition flex items-center gap-3">
-                <i class="fa-solid fa-chart-line text-lg w-5 text-center"></i> Rekap Penjualan
-            </button>
-            <button onclick="switchTab('pengaturan')" id="tab-desktop-pengaturan" class="w-full text-left px-4 py-3.5 rounded-xl font-bold text-gray-500 hover:text-sage-700 hover:bg-sage-50 transition flex items-center gap-3">
-                <i class="fa-solid fa-users-gear text-lg w-5 text-center"></i> Akses Kasir (CRUD)
-            </button>
-            <button onclick="switchTab('rekapabsensi')" id="tab-desktop-rekapabsensi" class="w-full text-left px-4 py-3.5 rounded-xl font-bold text-gray-500 hover:text-sage-700 hover:bg-sage-50 transition flex items-center gap-3">
-                <i class="fa-solid fa-calendar-check text-lg w-5 text-center"></i> Rekap Kehadiran
-            </button>
-            <button onclick="switchTab('absensi')" id="tab-desktop-absensi" class="w-full text-left px-4 py-3.5 rounded-xl font-bold text-gray-500 hover:text-sage-700 hover:bg-sage-50 transition flex items-center gap-3">
-                <i class="fa-solid fa-list-check text-lg w-5 text-center"></i> Riwayat Absen
-            </button>
-        </nav>
+        <!-- HEADER MOBILE -->
+        <header class="bg-white p-4 flex justify-between items-center md:hidden shadow-sm z-20 sticky top-0">
+            <div class="flex items-center gap-2 font-black text-gray-800">
+                <i class="fa-solid fa-crown text-emerald-600"></i> OWNER PANEL
+            </div>
+        </header>
 
-        <main class="flex-1 p-4 md:p-6 w-full min-w-0">
+        <!-- KONTAINER SCROLL HALAMAN -->
+        <div class="flex-1 overflow-y-auto p-4 lg:p-6 pb-[100px] lg:pb-6 max-w-6xl mx-auto w-full">
             
+            <!-- PANEL KEUANGAN & ANALISIS -->
             <section id="panel-keuangan" class="space-y-4">
                 
-                <div class="bg-white p-4 rounded-2xl shadow-sm border border-sage-100 flex flex-col xl:flex-row justify-between xl:items-center gap-4">
+                <!-- Filter Jangka Waktu -->
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 flex flex-col xl:flex-row justify-between xl:items-center gap-4">
                     <div class="flex flex-col sm:flex-row sm:items-center gap-3">
-                        <span class="text-[11px] font-bold text-gray-500 uppercase tracking-widest hidden sm:inline-block">Filter:</span>
-                        <div class="flex flex-wrap gap-2">
-                            <button onclick="setOwnerFinanceFilter('hari')" id="btn-flt-hari" class="flt-btn px-3 py-1.5 text-xs font-bold rounded-lg border border-sage-200 bg-white text-gray-600 transition">Hari Ini</button>
-                            <button onclick="setOwnerFinanceFilter('bulan')" id="btn-flt-bulan" class="flt-btn px-3 py-1.5 text-xs font-bold rounded-lg border border-sage-200 bg-white text-gray-600 transition">Bulan Ini</button>
-                            <button onclick="setOwnerFinanceFilter('semua')" id="btn-flt-semua" class="flt-btn px-3 py-1.5 text-xs font-bold rounded-lg border border-sage-200 bg-sage-600 text-white transition shadow-sm">Semua</button>
-                            <button onclick="setOwnerFinanceFilter('kustom')" id="btn-flt-kustom" class="flt-btn px-3 py-1.5 text-xs font-bold rounded-lg border border-sage-200 bg-white text-gray-600 transition">Kustom</button>
+                        <span class="text-[11px] font-bold text-gray-500 uppercase tracking-widest hidden sm:inline-block"><i class="fa-solid fa-filter text-emerald-600 mr-1"></i> Saring:</span>
+                        <div class="grid grid-cols-4 sm:flex gap-2">
+                            <button onclick="setOwnerFinanceFilter('hari')" id="btn-flt-hari" class="flt-btn px-3 py-2 text-xs font-bold rounded-xl border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 transition">Hari Ini</button>
+                            <button onclick="setOwnerFinanceFilter('bulan')" id="btn-flt-bulan" class="flt-btn px-3 py-2 text-xs font-bold rounded-xl border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 transition">Bulan Ini</button>
+                            <button onclick="setOwnerFinanceFilter('semua')" id="btn-flt-semua" class="flt-btn px-3 py-2 text-xs font-bold rounded-xl border border-emerald-600 bg-emerald-600 text-white transition shadow-sm">Semua</button>
+                            <button onclick="setOwnerFinanceFilter('kustom')" id="btn-flt-kustom" class="flt-btn px-3 py-2 text-xs font-bold rounded-xl border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 transition">Kustom</button>
                         </div>
-                        <div id="kustom-date-inputs" class="hidden flex items-center gap-2 bg-gray-50 p-1 rounded-lg border border-gray-200 w-max">
-                            <input type="date" id="flt-start" onchange="renderKeuangan()" class="bg-transparent px-2 py-1 text-xs focus:outline-none text-gray-700 font-medium">
+                        <div id="kustom-date-inputs" class="hidden flex items-center gap-2 bg-gray-50 p-1.5 rounded-xl border border-gray-200 w-max mt-2 sm:mt-0">
+                            <input type="date" id="flt-start" onchange="renderKeuangan()" class="bg-transparent px-2 py-1 text-xs focus:outline-none text-gray-700 font-bold">
                             <span class="text-xs text-gray-400">-</span>
-                            <input type="date" id="flt-end" onchange="renderKeuangan()" class="bg-transparent px-2 py-1 text-xs focus:outline-none text-gray-700 font-medium">
+                            <input type="date" id="flt-end" onchange="renderKeuangan()" class="bg-transparent px-2 py-1 text-xs focus:outline-none text-gray-700 font-bold">
                         </div>
                     </div>
                     
-                    <div class="flex gap-2 shrink-0 border-t sm:border-t-0 pt-3 sm:pt-0 border-gray-100">
-                         <button onclick="exportExcelOwner()" class="flex-1 sm:flex-none bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-sm transition flex items-center justify-center gap-2">
+                    <div class="flex gap-2 shrink-0 border-t sm:border-t-0 pt-4 sm:pt-0 border-gray-100">
+                         <button onclick="exportExcelOwner()" class="flex-1 sm:flex-none bg-emerald-50 hover:bg-emerald-600 text-emerald-700 hover:text-white px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 border border-emerald-100">
                             <i class="fa-solid fa-file-excel"></i> Export Excel
                          </button>
-                         <button onclick="deleteAllTransactions()" class="flex-1 sm:flex-none bg-red-50 hover:bg-red-500 text-red-600 hover:text-white border border-red-100 px-4 py-2 rounded-xl text-xs font-bold shadow-sm transition flex items-center justify-center gap-2">
-                            <i class="fa-solid fa-trash-can"></i> Bersihkan Data
+                         <button onclick="deleteAllTransactions()" class="flex-1 sm:flex-none bg-red-50 hover:bg-red-500 text-red-600 hover:text-white px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 border border-red-100">
+                            <i class="fa-solid fa-trash-can"></i> Bersihkan
                          </button>
                     </div>
                 </div>
 
-                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <div class="bg-white rounded-2xl p-5 border border-sage-100 shadow-sm border-l-4 border-l-sage-600 relative overflow-hidden">
-                        <i class="fa-solid fa-wallet absolute -right-3 -top-3 text-6xl text-sage-50 opacity-50"></i>
-                        <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1 relative z-10">Omset Bersih (Netto)</p>
-                        <h3 id="owner-total-omset" class="text-2xl md:text-3xl font-black text-sage-700 relative z-10">Rp 0</h3>
-                    </div>
-                    <div class="bg-white rounded-2xl p-5 border border-sage-100 shadow-sm relative overflow-hidden">
-                        <i class="fa-solid fa-receipt absolute -right-3 -top-3 text-6xl text-gray-50 opacity-50"></i>
-                        <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1 relative z-10">Volume Penjualan</p>
-                        <h3 id="owner-total-trx" class="text-xl md:text-2xl font-black text-gray-800 relative z-10">0 Nota</h3>
-                    </div>
-                    <div class="bg-white rounded-2xl p-5 border border-sage-100 shadow-sm relative overflow-hidden">
-                        <i class="fa-solid fa-tags absolute -right-3 -top-3 text-6xl text-red-50 opacity-50"></i>
-                        <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1 relative z-10">Total Diskon Diberikan</p>
-                        <h3 id="owner-total-diskon" class="text-xl md:text-2xl font-black text-red-500 relative z-10">Rp 0</h3>
+                <!-- Live Monitor Shift Atas -->
+                <div class="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
+                    <h3 class="text-xs font-bold text-gray-500 uppercase tracking-widest mb-3 flex items-center gap-2">
+                        <i class="fa-solid fa-circle text-red-500 text-[8px] animate-pulse"></i> Monitoring Kasir Aktif Saat Ini
+                    </h3>
+                    <div id="live-cashier-container" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                        <!-- Diisi via JS -->
                     </div>
                 </div>
-
-                <div class="bg-white p-4 rounded-2xl shadow-sm border border-sage-100">
-                    <h2 class="text-xs font-bold text-gray-500 uppercase tracking-widest mb-3 flex items-center gap-2">
-                        <i class="fa-solid fa-chart-area text-sage-500"></i> Grafik Tren Pendapatan
-                    </h2>
-                    <div class="relative h-[250px] w-full">
-                        <canvas id="financeChart"></canvas>
-                    </div>
-                </div>
-
-                <h2 class="text-xs font-bold text-gray-500 uppercase tracking-widest mt-2 px-1 flex items-center gap-2"><i class="fa-solid fa-cash-register text-sage-500"></i> Sumber Dana</h2>
-                <div class="grid grid-cols-3 gap-3">
-                    <div class="bg-white rounded-2xl p-4 border border-sage-100 shadow-sm text-center">
+                <!-- Metode Pembayaran Sumber Dana -->
+                <div class="grid grid-cols-3 gap-4">
+                    <div class="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm text-center">
                         <p class="text-[10px] font-bold text-gray-400 uppercase mb-1">Tunai / Cash</p>
-                        <h3 id="rep-cash-txt" class="text-sm sm:text-lg font-black text-gray-800">Rp 0</h3>
+                        <h3 id="rep-cash-txt" class="text-sm md:text-lg font-black text-gray-800">Rp 0</h3>
                     </div>
-                    <div class="bg-white rounded-2xl p-4 border border-sage-100 shadow-sm text-center">
+                    <div class="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm text-center">
                         <p class="text-[10px] font-bold text-gray-400 uppercase mb-1">QRIS</p>
-                        <h3 id="rep-qris-txt" class="text-sm sm:text-lg font-black text-gray-800">Rp 0</h3>
+                        <h3 id="rep-qris-txt" class="text-sm md:text-lg font-black text-gray-800">Rp 0</h3>
                     </div>
-                    <div class="bg-white rounded-2xl p-4 border border-sage-100 shadow-sm text-center">
+                    <div class="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm text-center">
                         <p class="text-[10px] font-bold text-gray-400 uppercase mb-1">Debit</p>
-                        <h3 id="rep-debit-txt" class="text-sm sm:text-lg font-black text-gray-800">Rp 0</h3>
+                        <h3 id="rep-debit-txt" class="text-sm md:text-lg font-black text-gray-800">Rp 0</h3>
+                    </div>
+                </div>
+                <!-- Ringkasan Angka Analisis Keuntungan -->
+<div class="grid grid-cols-2 lg:grid-cols-5 gap-4">
+    <div class="bg-white rounded-2xl p-4 sm:p-5 shadow-sm border border-gray-100 relative overflow-hidden">
+        <p class="text-[9px] sm:text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1 relative z-10">Omset Kotor</p>
+        <h3 id="owner-total-gross" class="text-xl sm:text-2xl font-black text-gray-700 relative z-10">Rp 0</h3>
+    </div>
+    
+    <div class="bg-white rounded-2xl p-4 sm:p-5 shadow-sm border border-gray-100 relative overflow-hidden">
+        <p class="text-[9px] sm:text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1 relative z-10">Total Diskon</p>
+        <h3 id="owner-total-diskon" class="text-xl sm:text-2xl font-black text-red-500 relative z-10">Rp 0</h3>
+    </div>
+
+    <div class="bg-white rounded-2xl p-4 sm:p-5 shadow-sm border border-gray-100 relative overflow-hidden">
+        <div class="absolute right-0 top-0 w-24 h-24 bg-emerald-50 rounded-bl-full -z-0"></div>
+        <p class="text-[9px] sm:text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1 relative z-10">Omset Bersih</p>
+        <h3 id="owner-total-omset" class="text-xl sm:text-2xl font-black text-emerald-700 relative z-10">Rp 0</h3>
+    </div>
+
+    <div class="bg-white rounded-2xl p-4 sm:p-5 shadow-sm border border-gray-100 relative overflow-hidden">
+        <div class="absolute right-0 top-0 w-24 h-24 bg-orange-50 rounded-bl-full -z-0"></div>
+        <p class="text-[9px] sm:text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1 relative z-10">Pengeluaran Operasional</p>
+        <h3 id="owner-total-expense" class="text-xl sm:text-2xl font-black text-orange-600 relative z-10">Rp 0</h3>
+    </div>
+
+    <div class="bg-white rounded-2xl p-4 sm:p-5 shadow-sm border border-gray-100 relative overflow-hidden col-span-2 lg:col-span-1">
+        <div class="absolute right-0 top-0 w-24 h-24 bg-teal-50 rounded-bl-full -z-0"></div>
+        <p class="text-[9px] sm:text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1 relative z-10">Keuntungan Bersih</p>
+        <h3 id="owner-total-profit" class="text-xl sm:text-2xl font-black text-teal-700 relative z-10">Rp 0</h3>
+    </div>
+</div>
+
+                <!-- Bagian Grafik Dua Kolom (Tren Omset & Menu Terlaris) -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                    <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 lg:col-span-2">
+                        <h2 class="text-sm font-bold text-gray-800 mb-4"><i class="fa-solid fa-chart-area mr-2 text-emerald-600"></i>Grafik Tren Pendapatan</h2>
+                        <div class="relative h-[250px] w-full">
+                            <canvas id="financeChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
+                        <h2 class="text-sm font-bold text-gray-800 mb-4"><i class="fa-solid fa-fire mr-2 text-orange-500"></i>5 Menu Paling Laris</h2>
+                        <div id="top-products-list" class="space-y-3.5 pt-2">
+                            <!-- Diisi via JS -->
+                        </div>
                     </div>
                 </div>
 
-                <h2 class="text-xs font-bold text-gray-500 uppercase tracking-widest mt-2 px-1 flex items-center gap-2"><i class="fa-solid fa-list-check text-sage-500"></i> Riwayat Transaksi Masuk</h2>
-                <div id="list-keuangan" class="space-y-3 pb-4 max-h-[500px] overflow-y-auto hide-scroll pr-1">
-                    <div class="text-center text-gray-400 text-xs py-8 bg-white border border-sage-100 rounded-2xl shadow-sm">Memuat data transaksi...</div>
+
+
+                <div class="flex items-center justify-between mt-4 px-1 mb-3">
+    <h2 class="text-xs font-bold text-gray-500 uppercase tracking-widest flex items-center gap-2">
+        <i class="fa-solid fa-list-check text-sage-500"></i> Riwayat Transaksi
+    </h2>
+    <div class="flex bg-gray-100 p-1 rounded-lg border border-gray-200">
+        <button onclick="switchListTab('pemasukan')" id="btn-tab-pemasukan" class="px-3 py-1.5 text-[10px] font-bold rounded-md bg-white text-emerald-600 shadow-sm transition">Pemasukan</button>
+        <button onclick="switchListTab('pengeluaran')" id="btn-tab-pengeluaran" class="px-3 py-1.5 text-[10px] font-bold rounded-md text-gray-400 hover:text-orange-500 transition">Pengeluaran</button>
+    </div>
+</div>
+
+<div id="list-pemasukan" class="space-y-3 pb-4 max-h-[500px] overflow-y-auto hide-scroll pr-1">
+    <div class="text-center text-gray-400 text-xs py-8 bg-white border border-sage-100 rounded-2xl shadow-sm">Memuat data transaksi masuk...</div>
+</div>
+
+<div id="list-pengeluaran" class="hidden space-y-3 pb-4 max-h-[500px] overflow-y-auto hide-scroll pr-1">
+    <div class="text-center text-gray-400 text-xs py-8 bg-white border border-sage-100 rounded-2xl shadow-sm">Memuat data pengeluaran...</div>
+</div>
+            </section>
+
+            <!-- PANEL MANAJEMEN MENU & HARGA MODAL -->
+            <section id="panel-produk" class="hidden space-y-4">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+                    <!-- Form Input Owner -->
+                    <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 self-start md:col-span-1">
+                        <h3 class="text-base font-bold text-gray-800 mb-4 border-b border-gray-100 pb-3"><i class="fa-solid fa-plus-circle mr-2 text-emerald-600"></i>Atur Produk & Modal</h3>
+                        <form id="owner-product-form" onsubmit="saveProductOwner(event)" class="space-y-3.5">
+                            <input type="hidden" id="own-prod-id">
+                            <div>
+                                <label class="block text-xs font-bold text-gray-500 mb-1">Nama Menu</label>
+                                <input type="text" id="own-prod-name" required class="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm font-bold bg-gray-50 focus:outline-emerald-500">
+                            </div>
+                            <div class="grid grid-cols-2 gap-2">
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-500 mb-1">Harga Modal (HPP)</label>
+                                    <input type="number" id="own-prod-cost" required class="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm font-bold bg-gray-50 focus:outline-emerald-500">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-500 mb-1">Harga Jual</label>
+                                    <input type="number" id="own-prod-price" required class="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm font-bold bg-gray-50 focus:outline-emerald-500">
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-2">
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-500 mb-1">Kategori</label>
+                                    <select id="own-prod-category" class="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm bg-gray-50 focus:outline-emerald-500 font-bold">
+                                        <option value="Makanan">Makanan</option>
+                                        <option value="Minuman">Minuman</option>
+                                        <option value="Lainnya">Lainnya</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-500 mb-1">Stok Toko</label>
+                                    <input type="number" id="own-prod-stock" required class="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm font-bold bg-gray-50 focus:outline-emerald-500">
+                                </div>
+                            </div>
+                            <div>
+    <label class="block text-xs font-bold text-gray-500 mb-1">Foto Menu (Upload dari Perangkat)</label>
+    <div class="flex items-center gap-3">
+        <div id="own-prod-image-preview" class="w-14 h-14 rounded-xl bg-gray-100 border border-gray-200 flex items-center justify-center shrink-0 overflow-hidden shadow-inner">
+            <i class="fa-solid fa-image text-gray-400"></i>
+        </div>
+        <div class="flex-1">
+            <input type="file" id="own-prod-image-file" accept="image/*" onchange="previewSelectedImage(event)" class="w-full text-sm text-gray-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 transition focus:outline-none cursor-pointer">
+            <input type="hidden" id="own-prod-image-url">
+        </div>
+    </div>
+</div>
+                            <div class="flex gap-2 pt-1">
+                                <button type="submit" id="btn-owner-submit-prod" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3.5 rounded-xl text-sm shadow-md transition">Simpan Item</button>
+                                <button type="button" id="btn-owner-cancel-prod" onclick="resetProductFormOwner()" class="hidden bg-gray-100 text-gray-600 px-4 py-3.5 rounded-xl text-sm font-bold">Batal</button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- List Katalog -->
+                    <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 md:col-span-2">
+                        <h3 class="text-base font-bold text-gray-800 mb-4 border-b border-gray-100 pb-3"><i class="fa-solid fa-layer-group mr-2 text-emerald-600"></i>Katalog Menu & Margin Margin</h3>
+                        <div id="owner-product-grid" class="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[500px] overflow-y-auto pr-1">
+                            <!-- Diisi via JS -->
+                        </div>
+                    </div>
                 </div>
             </section>
 
+            <!-- PANEL PENGATURAN KASIR -->
             <section id="panel-pengaturan" class="hidden space-y-4">
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
-                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-sage-100">
-                        <h3 class="text-sm font-bold text-gray-800 mb-4 border-b border-sage-50 pb-3 flex items-center gap-2">
-                            <i class="fa-solid fa-user-plus text-sage-600"></i> Tambah / Ubah Akun Kasir
-                        </h3>
+                    <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 self-start">
+                        <h3 class="text-base font-bold text-gray-800 mb-4 border-b border-gray-100 pb-3"><i class="fa-solid fa-user-plus mr-2 text-emerald-600"></i>Tambah / Ubah Akun Kasir</h3>
                         <form onsubmit="updateCashierPin(event)" class="space-y-4">
                             <div>
-                                <label class="block text-[10px] font-bold text-gray-400 uppercase mb-1.5 ml-1">Username Kasir</label>
-                                <input type="text" id="config-cashier-input" required placeholder="Contoh: kasir pagi" class="w-full border border-sage-200 rounded-xl px-4 py-3.5 text-sm font-bold bg-sage-50/50 focus:outline-sage-600 focus:bg-white transition-colors">
+                                <label class="block text-xs font-bold text-gray-500 mb-1.5 ml-1">Username Kasir</label>
+                                <input type="text" id="config-cashier-input" required placeholder="Contoh: Budi" class="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm font-bold bg-gray-50 focus:outline-emerald-500 transition-colors">
                             </div>
                             <div>
-                                <label class="block text-[10px] font-bold text-gray-400 uppercase mb-1.5 ml-1">PIN Rahasia (4 Angka)</label>
-                                <input type="password" id="config-pin-input" required minlength="4" maxlength="4" inputmode="numeric" placeholder="••••" oninput="if(this.value.length > 4) this.value = this.value.slice(0,4);" class="w-full border border-sage-200 rounded-xl px-4 py-3.5 text-center text-2xl tracking-[1em] font-black bg-sage-50/50 focus:outline-sage-600 focus:bg-white transition-colors">
+                                <label class="block text-xs font-bold text-gray-500 mb-1.5 ml-1">PIN Rahasia (4 Angka)</label>
+                                <input type="password" id="config-pin-input" required minlength="4" maxlength="4" inputmode="numeric" placeholder="••••" oninput="if(this.value.length > 4) this.value = this.value.slice(0,4);" class="w-full border border-gray-200 rounded-xl px-4 py-3 text-center text-2xl tracking-[1em] font-black bg-gray-50 focus:outline-emerald-500 transition-colors">
                             </div>
-                            <button type="submit" id="btn-save-pin" class="w-full bg-sage-600 hover:bg-sage-700 text-white font-bold py-4 rounded-xl text-sm transition-colors shadow-sm flex justify-center items-center gap-2">
-                                <i class="fa-solid fa-floppy-disk"></i> Simpan Data
+                            <button type="submit" id="btn-save-pin" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3.5 rounded-xl text-sm transition-colors shadow-md flex justify-center items-center gap-2">
+                                <i class="fa-solid fa-floppy-disk"></i> Simpan Akses
                             </button>
                         </form>
                     </div>
                     
-                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-sage-100 flex flex-col h-[400px] md:h-auto">
-                        <h3 class="text-sm font-bold text-gray-800 mb-4 border-b border-sage-50 pb-3 flex items-center gap-2">
-                            <i class="fa-solid fa-shield-halved text-sage-600"></i> Daftar Akun Terdaftar
-                        </h3>
-                        <div id="pin-configuration-list" class="space-y-3 overflow-y-auto hide-scroll flex-1 pr-1">
+                    <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex flex-col">
+                        <h3 class="text-base font-bold text-gray-800 mb-4 border-b border-gray-100 pb-3"><i class="fa-solid fa-shield-halved mr-2 text-emerald-600"></i>Daftar Akun Terdaftar</h3>
+                        <div id="pin-configuration-list" class="space-y-3">
                             <div class="text-center text-gray-400 text-xs py-8">Memuat data kasir...</div>
                         </div>
                     </div>
                 </div>
             </section>
 
+            <!-- PANEL REKAP ABSENSI -->
             <section id="panel-rekapabsensi" class="hidden space-y-4">
-                
-                <div class="bg-white border border-sage-100 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row justify-between sm:items-center gap-4 shadow-sm">
+                <div class="bg-white border border-gray-100 rounded-2xl p-5 flex flex-col sm:flex-row justify-between sm:items-center gap-4 shadow-sm">
                     <div>
-                        <h2 class="text-sm font-bold text-gray-800">Filter Bulan Rekap</h2>
-                        <p class="text-[11px] text-gray-400 mt-0.5">Pantau jumlah kehadiran dan hari bolong per bulan</p>
+                        <h2 class="text-base font-bold text-gray-800"><i class="fa-solid fa-calendar-check mr-2 text-emerald-600"></i>Filter Bulan Rekap</h2>
+                        <p class="text-[11px] text-gray-500 mt-1 font-medium">Pantau jumlah kehadiran dan hari bolong per bulan</p>
                     </div>
                     <div class="flex items-center gap-2 w-full sm:w-auto">
-                        <input type="month" id="filter-bulan-rekap" class="w-full sm:w-auto border border-sage-200 text-sage-700 font-bold text-sm rounded-xl px-4 py-3 bg-sage-50 focus:outline-sage-500 shadow-inner">
+                        <input type="month" id="filter-bulan-rekap" class="w-full sm:w-auto border border-gray-200 text-gray-800 font-bold text-sm rounded-xl px-4 py-3 bg-gray-50 focus:outline-emerald-500">
                     </div>
                 </div>
 
-                <div id="list-rekapabsensi" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pb-4">
-                    <div class="text-center text-gray-400 text-xs py-8 bg-white border border-sage-100 rounded-2xl shadow-sm col-span-full">Memuat rekapitulasi kehadiran...</div>
+                <div id="list-rekapabsensi" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div class="text-center text-gray-400 text-xs py-8 bg-white border border-gray-100 rounded-2xl shadow-sm col-span-full">Memuat rekapitulasi kehadiran...</div>
                 </div>
             </section>
 
+            <!-- PANEL RIWAYAT ABSENSI -->
             <section id="panel-absensi" class="hidden space-y-4">
-                <h2 class="text-xs font-bold text-gray-500 uppercase tracking-widest mt-2 px-1 flex items-center gap-2"><i class="fa-solid fa-list-ol text-sage-500"></i> Riwayat Mutasi Kehadiran</h2>
-                <div id="list-absensi" class="space-y-3 pb-4 max-h-[600px] overflow-y-auto hide-scroll pr-1">
-                    <div class="text-center text-gray-400 text-xs py-8 bg-white border border-sage-100 rounded-2xl shadow-sm">Memuat log kehadiran...</div>
+                <h2 class="text-base font-bold text-gray-800 mb-2 px-1"><i class="fa-solid fa-list-ol mr-2 text-emerald-600"></i>Riwayat Mutasi Kehadiran</h2>
+                <div id="list-absensi" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div class="text-center text-gray-400 text-xs py-8 bg-white border border-gray-100 rounded-2xl shadow-sm col-span-full">Memuat log kehadiran...</div>
                 </div>
             </section>
 
-        </main>
-    </div>
+            <!-- PANEL VOID / LOG MONITOR TRANSAKSI DICURIGAI -->
+            <section id="panel-void" class="hidden space-y-4">
+                <div class="bg-red-50 text-red-700 p-4 rounded-xl border border-red-100 flex items-start gap-3">
+                    <i class="fa-solid fa-shield-virus text-lg mt-0.5"></i>
+                    <div>
+                        <h4 class="font-bold text-sm">Sistem Proteksi Kasir Aktif</h4>
+                        <p class="text-xs text-red-600/90 mt-0.5">Halaman ini memantau aktivitas penghapusan transaksi atau pembersihan laci pesanan manual yang dilaporkan oleh sistem.</p>
+                    </div>
+                </div>
+                <div id="list-void-logs" class="space-y-3">
+                    <div class="text-center text-gray-400 text-xs py-12 bg-white border border-gray-100 rounded-2xl shadow-sm">Tidak ada riwayat aktivitas void / kecurangan terdeteksi. Aman.</div>
+                </div>
+            </section>
 
-    <nav class="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-sage-100 flex justify-between px-2 py-2 z-50 pb-safe shadow-[0_-4px_20px_rgba(0,0,0,0.03)]">
-        <button onclick="switchTab('keuangan')" id="tab-mobile-keuangan" class="flex-1 flex flex-col items-center justify-center py-1.5 text-sage-700 font-bold transition">
-            <i class="fa-solid fa-chart-line text-[16px] mb-1"></i><span class="text-[9px] tracking-wide">Keuangan</span>
+        </div>
+    </main>
+
+    <!-- NAVBAR MOBILE DI BAWAH -->
+    <nav class="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 flex justify-between px-2 py-1 z-50 pb-safe shadow-[0_-10px_20px_rgba(0,0,0,0.05)] overflow-x-auto no-scrollbar">
+        <button onclick="switchTab('keuangan')" id="tab-mobile-keuangan" class="flex-1 min-w-[70px] flex flex-col items-center justify-center p-2 text-emerald-600 font-bold transition">
+            <i class="fa-solid fa-chart-line text-[18px] mb-1"></i><span class="text-[9px] tracking-wide">Analisis</span>
         </button>
-        <button onclick="switchTab('pengaturan')" id="tab-mobile-pengaturan" class="flex-1 flex flex-col items-center justify-center py-1.5 text-gray-400 hover:text-sage-600 transition">
-            <i class="fa-solid fa-users-gear text-[16px] mb-1"></i><span class="text-[9px] tracking-wide">Otorisasi</span>
+        <button onclick="switchTab('produk')" id="tab-mobile-produk" class="flex-1 min-w-[70px] flex flex-col items-center justify-center p-2 text-gray-400 hover:text-emerald-600 transition">
+            <i class="fa-solid fa-boxes-stacked text-[18px] mb-1"></i><span class="text-[9px] tracking-wide">Menu</span>
         </button>
-        <button onclick="switchTab('rekapabsensi')" id="tab-mobile-rekapabsensi" class="flex-1 flex flex-col items-center justify-center py-1.5 text-gray-400 hover:text-sage-600 transition">
-            <i class="fa-solid fa-calendar-check text-[16px] mb-1"></i><span class="text-[9px] tracking-wide">Rekap</span>
+        <button onclick="switchTab('pengaturan')" id="tab-mobile-pengaturan" class="flex-1 min-w-[70px] flex flex-col items-center justify-center p-2 text-gray-400 hover:text-emerald-600 transition">
+            <i class="fa-solid fa-users-gear text-[18px] mb-1"></i><span class="text-[9px] tracking-wide">PIN</span>
         </button>
-        <button onclick="switchTab('absensi')" id="tab-mobile-absensi" class="flex-1 flex flex-col items-center justify-center py-1.5 text-gray-400 hover:text-sage-600 transition">
-            <i class="fa-solid fa-list-check text-[16px] mb-1"></i><span class="text-[9px] tracking-wide">Riwayat</span>
+        <button onclick="switchTab('rekapabsensi')" id="tab-mobile-rekapabsensi" class="flex-1 min-w-[70px] flex flex-col items-center justify-center p-2 text-gray-400 hover:text-emerald-600 transition">
+            <i class="fa-solid fa-calendar-check text-[18px] mb-1"></i><span class="text-[9px] tracking-wide">Rekap</span>
+        </button>
+        <button onclick="switchTab('absensi')" id="tab-mobile-absensi" class="flex-1 min-w-[70px] flex flex-col items-center justify-center p-2 text-gray-400 hover:text-emerald-600 transition">
+            <i class="fa-solid fa-list-check text-[18px] mb-1"></i><span class="text-[9px] tracking-wide">Absen</span>
+        </button>
+        <button onclick="switchTab('void')" id="tab-mobile-void" class="flex-1 min-w-[70px] flex flex-col items-center justify-center p-2 text-gray-400 hover:text-emerald-600 transition">
+            <i class="fa-solid fa-triangle-exclamation text-[18px] mb-1"></i><span class="text-[9px] tracking-wide">Void</span>
         </button>
     </nav>
 

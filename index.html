@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chili POS - Link Neo Meal</title>
+    <title>LINKNEOMEAL - Link Neo Meal</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
@@ -29,8 +29,8 @@
                 <div class="bg-emerald-50 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4 border border-emerald-100">
                     <img src="https://cdn-icons-png.flaticon.com/512/869/869687.png" class="w-10 h-10 opacity-80" alt="Logo">
                 </div>
-                <h2 class="text-2xl font-black text-gray-800">Chili POS</h2>
-                <p class="text-sm text-gray-500 font-medium">Masuk untuk memulai shift</p>
+                <h2 class="text-2xl font-black text-gray-800">LINKNEOMEAL</h2>
+                <p class="text-sm text-gray-500 font-medium">Login Kasir dan auto absensi
             </div>
             
             <div class="text-left space-y-5 relative z-10">
@@ -63,39 +63,54 @@
         <div class="p-6">
             <div class="flex items-center gap-3 mb-10">
                 <div class="w-10 h-10 bg-emerald-50 rounded-full flex items-center justify-center text-emerald-600 border border-emerald-100 shrink-0"><i class="fa-solid fa-pepper-hot"></i></div>
-                <h1 class="text-lg font-black tracking-tight text-gray-800 hidden lg:block">CHILI POS</h1>
+                <h1 class="text-lg font-black tracking-tight text-gray-800 hidden lg:block">LINKNEOMEAL</h1>
             </div>
-            <nav class="space-y-2">
-                <button onclick="switchPage('kasir', this)" class="nav-btn w-full flex items-center gap-4 p-3.5 rounded-2xl bg-emerald-600 text-white font-bold transition shadow-md shadow-emerald-200/50">
-                    <i class="fa-solid fa-border-all text-lg w-5 text-center"></i> <span class="hidden lg:block text-sm">Menu / Kasir</span>
-                </button>
-                <button onclick="switchPage('produk', this)" class="nav-btn w-full flex items-center gap-4 p-3.5 rounded-2xl text-gray-500 hover:bg-gray-50 hover:text-emerald-600 font-semibold transition">
-                    <i class="fa-solid fa-boxes-stacked text-lg w-5 text-center"></i> <span class="hidden lg:block text-sm">Inventaris</span>
-                </button>
-                <button onclick="switchPage('struk', this)" class="nav-btn w-full flex items-center gap-4 p-3.5 rounded-2xl text-gray-500 hover:bg-gray-50 hover:text-emerald-600 font-semibold transition">
-                    <i class="fa-solid fa-receipt text-lg w-5 text-center"></i> <span class="hidden lg:block text-sm">Riwayat Struk</span>
-                </button>
-                <button onclick="switchPage('promo', this)" class="nav-btn w-full flex items-center gap-4 p-3.5 rounded-2xl text-gray-500 hover:bg-gray-50 hover:text-emerald-600 font-semibold transition">
-                    <i class="fa-solid fa-bullhorn text-lg w-5 text-center"></i> <span class="hidden lg:block text-sm">Promo WA</span>
-                </button>
-                <button onclick="switchPage('keuangan', this)" class="nav-btn w-full flex items-center gap-4 p-3.5 rounded-2xl text-gray-500 hover:bg-gray-50 hover:text-emerald-600 font-semibold transition">
-                    <i class="fa-solid fa-chart-pie text-lg w-5 text-center"></i> <span class="hidden lg:block text-sm">Akuntansi</span>
-                </button>
-            </nav>
+ <nav class="space-y-2">
+    <button onclick="switchPage('kasir', this)" class="nav-btn w-full flex items-center gap-4 p-3.5 rounded-2xl bg-emerald-600 text-white font-bold transition">
+        <i class="fa-solid fa-border-all text-lg w-5 text-center shrink-0"></i> 
+        <span class="nav-text text-sm whitespace-nowrap">Menu / Kasir</span>
+    </button>
+    
+    <button onclick="switchPage('produk', this)" class="nav-btn w-full flex items-center gap-4 p-3.5 rounded-2xl text-gray-500 hover:bg-emerald-50 hover:text-emerald-600 font-semibold transition">
+        <i class="fa-solid fa-boxes-stacked text-lg w-5 text-center shrink-0"></i> 
+        <span class="nav-text text-sm whitespace-nowrap">Inventaris</span>
+    </button>
+    
+    <button onclick="switchPage('struk', this)" class="nav-btn w-full flex items-center gap-4 p-3.5 rounded-2xl text-gray-500 hover:bg-emerald-50 hover:text-emerald-600 font-semibold transition">
+        <i class="fa-solid fa-receipt text-lg w-5 text-center shrink-0"></i> 
+        <span class="nav-text text-sm whitespace-nowrap">Riwayat Struk</span>
+    </button>
+    
+    <button onclick="switchPage('promo', this)" class="nav-btn w-full flex items-center gap-4 p-3.5 rounded-2xl text-gray-500 hover:bg-emerald-50 hover:text-emerald-600 font-semibold transition">
+        <i class="fa-solid fa-bullhorn text-lg w-5 text-center shrink-0"></i> 
+        <span class="nav-text text-sm whitespace-nowrap">Promo WA</span>
+    </button>
+    
+    <button onclick="switchPage('keuangan', this)" class="nav-btn w-full flex items-center gap-4 p-3.5 rounded-2xl text-gray-500 hover:bg-emerald-50 hover:text-emerald-600 font-semibold transition">
+        <i class="fa-solid fa-chart-pie text-lg w-5 text-center shrink-0"></i> 
+        <span class="nav-text text-sm whitespace-nowrap">Akuntansi</span>
+    </button>
+    
+    <button onclick="openExpenseModal()" class="nav-btn w-full flex items-center gap-4 p-3.5 rounded-2xl text-gray-500 hover:bg-orange-50 hover:text-orange-600 font-semibold transition">
+        <i class="fa-solid fa-money-bill-transfer text-lg w-5 text-center shrink-0"></i> 
+        <span class="nav-text text-sm whitespace-nowrap">Pengeluaran</span>
+    </button>
+</nav>
         </div>
         
-        <div class="p-6 border-t border-gray-100">
-            <div class="flex items-center gap-3 mb-4">
-                <div class="w-10 h-10 bg-emerald-100 text-emerald-700 rounded-full flex items-center justify-center font-bold text-sm shrink-0" id="avatar-initial">C</div>
-                <div class="hidden lg:block truncate">
-                    <p id="active-cashier-name" class="text-sm font-bold text-gray-800 truncate">Cashier</p>
-                    <p class="text-[10px] text-gray-400">Operator Aktif</p>
-                </div>
-            </div>
-            <button onclick="openLogoutModal()" class="w-full flex items-center justify-center lg:justify-start gap-3 p-3 rounded-xl text-gray-500 hover:bg-red-50 hover:text-red-600 font-bold transition">
-                <i class="fa-solid fa-arrow-right-from-bracket text-lg w-5 text-center"></i> <span class="hidden lg:block text-sm">Logout</span>
-            </button>
+ <div class="p-6 border-t border-gray-100 overflow-hidden">
+    <div class="flex items-center gap-3 mb-4">
+        <div class="w-10 h-10 bg-emerald-100 text-emerald-700 rounded-full flex items-center justify-center shrink-0" id="avatar-initial">C</div>
+        <div class="nav-text truncate">
+            <p id="active-cashier-name" class="text-sm font-bold text-gray-800 truncate">Cashier</p>
+            <p class="text-[10px] text-gray-400">Operator Aktif</p>
         </div>
+    </div>
+    <button onclick="openLogoutModal()" class="w-full flex items-center justify-center lg:justify-start gap-3 p-3 rounded-xl text-gray-500 hover:bg-red-50 hover:text-red-600 font-bold transition">
+        <i class="fa-solid fa-arrow-right-from-bracket text-lg w-5 text-center shrink-0"></i> 
+        <span class="nav-text text-sm whitespace-nowrap">Logout</span>
+    </button>
+</div>
     </aside>
 
     <main class="flex-1 flex flex-col min-w-0 bg-[#f4f7f6]">
@@ -257,73 +272,109 @@
             </section>
 
             <section id="page-keuangan" class="page-content hidden h-full overflow-y-auto p-4 lg:p-6 pb-[120px] lg:pb-6 space-y-4 max-w-5xl mx-auto w-full">
-                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 space-y-4">
-                    <h3 class="text-xs font-bold text-gray-500 uppercase tracking-wider"><i class="fa-solid fa-filter text-emerald-600 mr-1"></i> Saring Periode</h3>
-                    <div class="grid grid-cols-3 gap-3">
-                        <button onclick="setFinanceFilter('today')" id="btn-flt-today" class="filter-btn text-sm bg-emerald-600 text-white font-bold py-3 rounded-xl border border-emerald-600 transition">Hari Ini</button>
-                        <button onclick="setFinanceFilter('month')" id="btn-flt-month" class="filter-btn text-sm bg-white text-gray-500 font-bold py-3 rounded-xl border border-gray-200 hover:bg-gray-50 transition">Bulan Ini</button>
-                        <button onclick="setFinanceFilter('custom')" id="btn-flt-custom" class="filter-btn text-sm bg-white text-gray-500 font-bold py-3 rounded-xl border border-gray-200 hover:bg-gray-50 transition">Kustom</button>
-                    </div>
-                    <div id="custom-date-container" class="grid grid-cols-2 gap-3 hidden pt-2">
-                        <div><label class="text-xs font-bold text-gray-500 mb-1 block">Mulai</label><input type="date" id="filter-start-date" onchange="calculateFinancials()" class="w-full text-sm border border-gray-200 bg-gray-50 rounded-xl p-3 focus:outline-emerald-500"></div>
-                        <div><label class="text-xs font-bold text-gray-500 mb-1 block">Selesai</label><input type="date" id="filter-end-date" onchange="calculateFinancials()" class="w-full text-sm border border-gray-200 bg-gray-50 rounded-xl p-3 focus:outline-emerald-500"></div>
-                    </div>
-                </div>
+    
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 space-y-4">
+        <h3 class="text-xs font-bold text-gray-500 uppercase tracking-wider"><i class="fa-solid fa-filter text-emerald-600 mr-1"></i> Saring Periode</h3>
+        <div class="grid grid-cols-3 gap-3">
+            <button onclick="setFinanceFilter('today')" id="btn-flt-today" class="filter-btn text-sm bg-emerald-600 text-white font-bold py-3 rounded-xl border border-emerald-600 transition">Hari Ini</button>
+            <button onclick="setFinanceFilter('month')" id="btn-flt-month" class="filter-btn text-sm bg-white text-gray-500 font-bold py-3 rounded-xl border border-gray-200 hover:bg-gray-50 transition">Bulan Ini</button>
+            <button onclick="setFinanceFilter('custom')" id="btn-flt-custom" class="filter-btn text-sm bg-white text-gray-500 font-bold py-3 rounded-xl border border-gray-200 hover:bg-gray-50 transition">Kustom</button>
+        </div>
+        <div id="custom-date-container" class="grid grid-cols-2 gap-3 hidden pt-2">
+            <div><label class="text-xs font-bold text-gray-500 mb-1 block">Mulai</label><input type="date" id="filter-start-date" onchange="calculateFinancials()" class="w-full text-sm border border-gray-200 bg-gray-50 rounded-xl p-3 focus:outline-emerald-500"></div>
+            <div><label class="text-xs font-bold text-gray-500 mb-1 block">Selesai</label><input type="date" id="filter-end-date" onchange="calculateFinancials()" class="w-full text-sm border border-gray-200 bg-gray-50 rounded-xl p-3 focus:outline-emerald-500"></div>
+        </div>
+    </div>
 
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 relative overflow-hidden">
-                        <div class="absolute right-0 top-0 w-24 h-24 bg-emerald-50 rounded-bl-full -z-0"></div>
-                        <p class="text-xs font-bold text-gray-400 uppercase tracking-wider relative z-10">Omset Bersih</p>
-                        <h3 id="report-income" class="text-2xl font-black text-emerald-700 mt-2 relative z-10">Rp 0</h3>
-                    </div>
-                    <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 relative overflow-hidden">
-                        <div class="absolute right-0 top-0 w-24 h-24 bg-red-50 rounded-bl-full -z-0"></div>
-                        <p class="text-xs font-bold text-gray-400 uppercase tracking-wider relative z-10">Total Diskon</p>
-                        <h3 id="report-discount" class="text-2xl font-black text-red-600 mt-2 relative z-10">Rp 0</h3>
-                    </div>
-                </div>
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+        <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
+            <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Omset Kotor</p>
+            <h3 id="cashier-total-gross" class="text-xl font-black text-gray-700 mt-1">Rp 0</h3>
+        </div>
+        <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
+            <p class="text-[10px] font-bold text-red-400 uppercase tracking-wider">Total Diskon</p>
+            <h3 id="cashier-total-diskon" class="text-xl font-black text-red-500 mt-1">Rp 0</h3>
+        </div>
+        <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
+            <p class="text-[10px] font-bold text-orange-500 uppercase tracking-wider">Pengeluaran</p>
+            <h3 id="cashier-total-expense" class="text-xl font-black text-orange-600 mt-1">Rp 0</h3>
+        </div>
+        <div class="bg-emerald-50 p-4 rounded-2xl shadow-sm border border-emerald-100">
+            <p class="text-[10px] font-bold text-emerald-700 uppercase tracking-wider">Uang Laci (Cash)</p>
+            <h3 id="cashier-cash-in-drawer" class="text-xl font-black text-emerald-700 mt-1">Rp 0</h3>
+        </div>
+    </div>
 
-                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
-                    <div class="flex justify-between items-center mb-6 border-b border-gray-100 pb-4">
-                        <h2 class="text-base font-bold text-gray-800"><i class="fa-solid fa-chart-pie mr-2 text-emerald-600"></i>Metode Bayar</h2>
-                        <button onclick="exportToExcel()" class="bg-emerald-50 text-emerald-600 hover:bg-emerald-600 hover:text-white text-xs font-bold px-4 py-2.5 rounded-xl transition border border-emerald-100"><i class="fa-solid fa-file-excel mr-1"></i> Excel</button>
-                    </div>
-                    <div class="space-y-5">
-                        <div><div class="flex justify-between text-sm font-bold text-gray-700 mb-2"><span>Tunai</span><span id="rep-cash-txt">Rp 0</span></div><div class="w-full bg-gray-100 h-3 rounded-full overflow-hidden"><div id="bar-cash" class="bg-emerald-500 h-full transition-all duration-500" style="width: 0%"></div></div></div>
-                        <div><div class="flex justify-between text-sm font-bold text-gray-700 mb-2"><span>QRIS</span><span id="rep-qris-txt">Rp 0</span></div><div class="w-full bg-gray-100 h-3 rounded-full overflow-hidden"><div id="bar-qris" class="bg-blue-500 h-full transition-all duration-500" style="width: 0%"></div></div></div>
-                        <div><div class="flex justify-between text-sm font-bold text-gray-700 mb-2"><span>Debit</span><span id="rep-debit-txt">Rp 0</span></div><div class="w-full bg-gray-100 h-3 rounded-full overflow-hidden"><div id="bar-debit" class="bg-amber-500 h-full transition-all duration-500" style="width: 0%"></div></div></div>
-                    </div>
-                </div>
-                
-                <div class="bg-gray-800 p-5 rounded-2xl shadow-lg flex justify-between items-center text-white mt-4">
-                    <div>
-                        <h2 class="text-base font-bold text-white">Cetak Closing Shift</h2>
-                        <p class="text-xs text-gray-300 mt-1">Print rekap uang fisik sebelum logout.</p>
-                    </div>
-                    <button id="btn-print-closing" onclick="manualPrintClosing()" class="bg-white hover:bg-gray-100 text-gray-800 text-sm font-bold px-5 py-3 rounded-xl shadow transition flex items-center gap-2">
-                        <i class="fa-solid fa-print"></i> Print Rekap
-                    </button>
-                </div>
-            </section>
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+        <div class="flex justify-between items-center mb-6 border-b border-gray-100 pb-4">
+            <h2 class="text-base font-bold text-gray-800"><i class="fa-solid fa-chart-pie mr-2 text-emerald-600"></i>Metode Bayar</h2>
+            <button onclick="exportToExcel()" class="bg-emerald-50 text-emerald-600 hover:bg-emerald-600 hover:text-white text-xs font-bold px-4 py-2.5 rounded-xl transition border border-emerald-100"><i class="fa-solid fa-file-excel mr-1"></i> Excel</button>
+        </div>
+        <div class="space-y-5">
+            <div><div class="flex justify-between text-sm font-bold text-gray-700 mb-2"><span>Tunai</span><span id="rep-cash-txt">Rp 0</span></div><div class="w-full bg-gray-100 h-3 rounded-full overflow-hidden"><div id="bar-cash" class="bg-emerald-500 h-full transition-all duration-500" style="width: 0%"></div></div></div>
+            <div><div class="flex justify-between text-sm font-bold text-gray-700 mb-2"><span>QRIS</span><span id="rep-qris-txt">Rp 0</span></div><div class="w-full bg-gray-100 h-3 rounded-full overflow-hidden"><div id="bar-qris" class="bg-blue-500 h-full transition-all duration-500" style="width: 0%"></div></div></div>
+            <div><div class="flex justify-between text-sm font-bold text-gray-700 mb-2"><span>Debit</span><span id="rep-debit-txt">Rp 0</span></div><div class="w-full bg-gray-100 h-3 rounded-full overflow-hidden"><div id="bar-debit" class="bg-amber-500 h-full transition-all duration-500" style="width: 0%"></div></div></div>
+        </div>
+    </div>
+    
+    <div class="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm space-y-4">
+        <div class="flex items-center justify-between border-b border-gray-50 pb-3">
+            <h3 class="text-sm font-bold text-gray-700 flex items-center gap-2">
+                <i class="fa-solid fa-list-check text-emerald-600"></i> Riwayat Mutasi
+            </h3>
+            <div class="flex bg-gray-100 p-1 rounded-lg border border-gray-200">
+                <button onclick="switchCashierListTab('pemasukan')" id="btn-cashier-pemasukan" class="px-3 py-1.5 text-[10px] font-bold rounded-md bg-white text-emerald-600 shadow-sm transition">Masuk</button>
+                <button onclick="switchCashierListTab('pengeluaran')" id="btn-cashier-pengeluaran" class="px-3 py-1.5 text-[10px] font-bold rounded-md text-gray-400 hover:text-orange-500 transition">Keluar</button>
+            </div>
+        </div>
+        <div id="cashier-list-pemasukan" class="space-y-3 max-h-[300px] overflow-y-auto pr-1"></div>
+        <div id="cashier-list-pengeluaran" class="hidden space-y-3 max-h-[300px] overflow-y-auto pr-1"></div>
+    </div>
+
+    <div class="bg-gray-800 p-5 rounded-2xl shadow-lg flex justify-between items-center text-white mt-4">
+        <div>
+            <h2 class="text-base font-bold text-white">Cetak Closing Shift</h2>
+            <p class="text-xs text-gray-300 mt-1">Print rekap uang fisik sebelum logout.</p>
+        </div>
+        <button id="btn-print-closing" onclick="manualPrintClosing()" class="bg-white hover:bg-gray-100 text-gray-800 text-sm font-bold px-5 py-3 rounded-xl shadow transition flex items-center gap-2">
+            <i class="fa-solid fa-print"></i> Print Rekap
+        </button>
+    </div>
+</section>
 
         </div>
     </main>
 
-    <nav class="md:hidden fixed bottom-0 left-0 right-0 bg-white shadow-[0_-10px_20px_rgba(0,0,0,0.05)] px-4 py-2 flex justify-between z-40 border-t border-gray-100 pb-safe">
-        <button onclick="switchPage('kasir', this)" class="nav-btn flex flex-col items-center p-2 text-emerald-600 font-bold w-16 transition-colors">
-            <i class="fa-solid fa-border-all text-xl mb-1"></i><span class="text-[9px]">Menu</span>
+<div id="floating-cart-btn" class="md:hidden fixed bottom-[76px] left-0 right-0 px-4 z-30 transition-all duration-300 transform translate-y-32 opacity-0 pointer-events-none">
+        <button onclick="document.getElementById('cart-drawer').classList.remove('translate-y-full')" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl shadow-[0_4px_20px_rgba(5,150,105,0.4)] p-3.5 flex justify-between items-center transition active:scale-95 border border-emerald-500">
+            <div class="flex flex-col text-left">
+                <span class="text-[10px] text-emerald-100 font-medium leading-tight mb-0.5">Total Tagihan</span>
+                <div class="flex items-center gap-2">
+                    <span id="floating-cart-total" class="font-black text-base leading-tight tracking-wide">Rp 0</span>
+                    <span id="floating-cart-count" class="bg-white text-emerald-600 text-[10px] font-black px-1.5 py-0.5 rounded-md leading-none shadow-sm">0 Item</span>
+                </div>
+            </div>
+            <div class="flex items-center gap-2 font-bold text-sm tracking-wide bg-emerald-700/50 px-3 py-2 rounded-xl">
+                Lanjutkan <i class="fa-solid fa-chevron-right text-xs"></i>
+            </div>
         </button>
-        <button onclick="switchPage('produk', this)" class="nav-btn flex flex-col items-center p-2 text-gray-400 hover:text-emerald-600 w-16 transition-colors">
-            <i class="fa-solid fa-boxes-stacked text-xl mb-1"></i><span class="text-[9px]">Produk</span>
+    </div>
+
+    <nav class="md:hidden fixed bottom-0 left-0 right-0 bg-white shadow-[0_-10px_20px_rgba(0,0,0,0.05)] px-2 py-1.5 flex justify-between items-end z-40 border-t border-gray-100 pb-safe">
+        <button onclick="switchPage('kasir', this)" class="nav-btn flex flex-col items-center justify-end pb-1 text-emerald-600 font-bold w-[20%] transition-colors">
+            <i class="fa-solid fa-border-all text-[18px] mb-1"></i><span class="text-[8px] sm:text-[9px] tracking-tight">Menu</span>
         </button>
-        <button onclick="document.getElementById('cart-drawer').classList.remove('translate-y-full')" class="nav-btn flex flex-col items-center p-2 text-white bg-emerald-600 rounded-full w-14 h-14 -mt-6 shadow-lg border-4 border-[#f4f7f6]">
-            <i class="fa-solid fa-cart-shopping text-lg mt-1"></i>
+        <button onclick="switchPage('produk', this)" class="nav-btn flex flex-col items-center justify-end pb-1 text-gray-400 hover:text-emerald-600 w-[20%] transition-colors">
+            <i class="fa-solid fa-boxes-stacked text-[18px] mb-1"></i><span class="text-[8px] sm:text-[9px] tracking-tight">Produk</span>
         </button>
-        <button onclick="switchPage('struk', this)" class="nav-btn flex flex-col items-center p-2 text-gray-400 hover:text-emerald-600 w-16 transition-colors">
-            <i class="fa-solid fa-receipt text-xl mb-1"></i><span class="text-[9px]">Struk</span>
+        <button onclick="switchPage('struk', this)" class="nav-btn flex flex-col items-center justify-end pb-1 text-gray-400 hover:text-emerald-600 w-[20%] transition-colors">
+            <i class="fa-solid fa-receipt text-[18px] mb-1"></i><span class="text-[8px] sm:text-[9px] tracking-tight">Struk</span>
         </button>
-        <button onclick="switchPage('keuangan', this)" class="nav-btn flex flex-col items-center p-2 text-gray-400 hover:text-emerald-600 w-16 transition-colors">
-            <i class="fa-solid fa-chart-pie text-xl mb-1"></i><span class="text-[9px]">Report</span>
+        <button onclick="switchPage('keuangan', this)" class="nav-btn flex flex-col items-center justify-end pb-1 text-gray-400 hover:text-emerald-600 w-[20%] transition-colors">
+            <i class="fa-solid fa-chart-pie text-[18px] mb-1"></i><span class="text-[8px] sm:text-[9px] tracking-tight">Report</span>
+        </button>
+        <button onclick="openExpenseModal()" class="nav-btn flex flex-col items-center justify-end pb-1 text-gray-400 hover:text-orange-500 w-[20%] transition-colors">
+            <i class="fa-solid fa-money-bill-transfer text-[18px] mb-1"></i><span class="text-[8px] sm:text-[9px] tracking-tight">Keluar</span>
         </button>
     </nav>
 
@@ -408,74 +459,31 @@
         </div>
     </div>
 
-    <script src="app-pos.js"></script>
-    <script>
-        // Fungsi merubah tombol kategori dan layout secara dinamis
-        function filterCategory(cat, btnElement) {
-            selectedCategory = cat;
-            document.querySelectorAll('.cat-btn').forEach(b => { 
-                b.className = "cat-btn flex flex-col items-center justify-center w-[80px] h-[90px] rounded-2xl bg-white text-gray-500 shadow-sm shrink-0 transition-all border border-transparent hover:border-gray-200"; 
-            });
-            if (btnElement) {
-                btnElement.className = "cat-btn flex flex-col items-center justify-center w-[80px] h-[90px] rounded-2xl bg-emerald-100 text-emerald-700 shadow-sm shrink-0 transition-all border border-emerald-200";
-            }
-            renderKasirProducts();
-        }
-
-        // Sinkronisasi data Modal Pembayaran dengan Sidebar 
-        setInterval(() => {
-            const sidebarTotalEl = document.getElementById('txt-total');
-            const sidebarSubtotalEl = document.getElementById('txt-subtotal');
-            const modalTotalEl = document.getElementById('txt-total-modal');
-            const modalSubtotalEl = document.getElementById('txt-subtotal-modal');
-            
-            if(sidebarTotalEl && modalTotalEl) modalTotalEl.innerText = sidebarTotalEl.innerText;
-            if(sidebarSubtotalEl && modalSubtotalEl) modalSubtotalEl.innerText = sidebarSubtotalEl.innerText;
-        }, 300);
+    <div id="expense-modal" class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-[100] hidden flex items-end sm:items-center justify-center transition-opacity">
+    <div class="bg-white w-full sm:w-[400px] rounded-t-3xl sm:rounded-3xl p-6 shadow-2xl transform transition-transform translate-y-full sm:translate-y-0 sm:scale-95" id="expense-modal-content">
+        <div class="flex justify-between items-center mb-5">
+            <h3 class="text-lg font-black text-gray-800"><i class="fa-solid fa-money-bill-transfer text-orange-500 mr-2"></i>Catat Pengeluaran</h3>
+            <button onclick="closeExpenseModal()" class="w-8 h-8 bg-gray-100 text-gray-500 rounded-full hover:bg-red-50 hover:text-red-500 font-bold transition flex items-center justify-center">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
         
-        // Fungsionalitas Navigasi Halaman
-        function switchPage(pageId, btnElement) {
-            document.querySelectorAll('.page-content').forEach(p => p.classList.add('hidden'));
-            document.getElementById(`page-${pageId}`).classList.remove('hidden');
-            
-            // Reset style untuk Nav Sidebar (Laptop)
-            document.querySelectorAll('aside .nav-btn').forEach(b => { 
-                b.className = "nav-btn w-full flex items-center gap-4 p-3.5 rounded-2xl text-gray-500 hover:bg-gray-50 hover:text-emerald-600 font-semibold transition"; 
-            });
-            // Reset style untuk Nav Bawah (Mobile)
-            document.querySelectorAll('nav.md\\:hidden .nav-btn').forEach(b => {
-                if(!b.classList.contains('bg-emerald-600')) { 
-                    b.className = "nav-btn flex flex-col items-center p-2 text-gray-400 hover:text-emerald-600 w-16 transition-colors";
-                }
-            });
-
-            // Set style aktif
-            if(btnElement) {
-                if (window.innerWidth >= 768) { 
-                    btnElement.className = "nav-btn w-full flex items-center gap-4 p-3.5 rounded-2xl bg-emerald-600 text-white font-bold transition shadow-md shadow-emerald-200/50";
-                } else { 
-                    btnElement.className = "nav-btn flex flex-col items-center p-2 text-emerald-600 font-bold w-16 transition-colors";
-                }
-            }
-
-            if(pageId === 'kasir') { renderKasirProducts(); renderCart(); renderCustomerList(); }
-            if(pageId === 'produk') { renderProductTable(); resetProductForm(); }
-            if(pageId === 'struk') renderStrukList();
-            if(pageId === 'promo') renderPromoCustomers();
-            if(pageId === 'keuangan') calculateFinancials();
-        }
-
-        function openPaymentModal() {
-            if (typeof cart !== 'undefined' && cart.length === 0) return alert('Keranjang masih kosong!');
-            document.getElementById('payment-modal').classList.remove('hidden');
-        }
-        function closePaymentModal() { document.getElementById('payment-modal').classList.add('hidden'); }
-        function handleModalCheckout() {
-            if (typeof processCheckout === 'function') {
-                processCheckout();
-                setTimeout(() => { if (cart.length === 0) closePaymentModal(); }, 500);
-            }
-        }
-    </script>
+        <div class="space-y-4">
+            <div>
+                <label class="block text-xs font-bold text-gray-500 mb-1.5 ml-1">Keterangan / Beli Apa?</label>
+                <input type="text" id="expense-desc" placeholder="Contoh: Beli es batu kristal" class="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm font-bold bg-gray-50 focus:outline-emerald-500 transition-colors">
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-gray-500 mb-1.5 ml-1">Nominal (Rp)</label>
+                <input type="number" id="expense-amount" placeholder="0" class="w-full border border-gray-200 rounded-xl px-4 py-3 text-lg font-black text-orange-600 bg-gray-50 focus:outline-emerald-500 transition-colors">
+            </div>
+            <button onclick="saveExpense()" id="btn-save-expense" class="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-3.5 rounded-xl text-sm transition-colors shadow-md mt-2">
+                Simpan Pengeluaran
+            </button>
+        </div>
+    </div>
+</div>
+    
+    <script src="app-pos.js"></script>
 </body>
 </html>
