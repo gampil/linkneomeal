@@ -166,41 +166,41 @@ function setupRealtimeListeners() {
 // LOGIKA UTAMA: REAL-TIME SESSION PERSISTENCE LISTENER
 // ------------------------------------------------------------------------
 function listenToActiveSession() {
+    // Kita pantau perubahan di attendance, ambil data paling baru
     db.ref('attendance').orderByKey().limitToLast(1).on('value', (snapshot) => {
         let activeSessionFound = false;
+        let currentCashier = "Kasir"; // Default
 
-        if (snapshot.exists()) {
-            snapshot.forEach((child) => {
-                const session = child.val();
-                if (session.status === 'Sedang Bekerja') {
-                    activeSessionFound = true;
-                    currentSessionId = session.id;
-                    currentCashier = session.cashierName;
-                }
-            });
-        }
+        snapshot.forEach((child) => {
+            const data = child.val();
+            // Cek apakah statusnya masih 'Sedang Bekerja'
+            if (data.status === 'Sedang Bekerja') {
+                activeSessionFound = true;
+                currentCashier = data.cashierName; // Ambil nama asli dari database
+            }
+        });
 
         const loginOverlay = document.getElementById('login-overlay');
-        const activeCashierLabel = document.getElementById('active-cashier-name');
-            if (activeCashierLabel) activeCashierLabel.innerText = currentCashier;
-const mName = document.getElementById('m-cashier-name');
-            if (mName) mName.innerText = currentCashier;
+        if (loginOverlay) {
+            if (activeSessionFound) {
+                loginOverlay.classList.add('hidden');
+                
+                // Update ke Sidebar (Desktop)
+                const activeCashierLabel = document.getElementById('active-cashier-name');
+                if (activeCashierLabel) activeCashierLabel.innerText = currentCashier;
 
-        if (activeSessionFound) {
-            loginOverlay.classList.add('hidden');
-            if (activeCashierLabel) {
-                activeCashierLabel.innerHTML = `<i class="fa-solid fa-user mr-1"></i> ${currentCashier}`;
+                // Update ke Header Mobile (Badge Hijau)
+                const mName = document.getElementById('m-cashier-name');
+                if (mName) mName.innerText = currentCashier;
+                
+                // Update inisial avatar
+                const avatar = document.getElementById('avatar-initial');
+                if (avatar) avatar.innerText = currentCashier.charAt(0).toUpperCase();
+
+                document.getElementById('logout-pin-modal').classList.add('hidden');
+            } else {
+                loginOverlay.classList.remove('hidden');
             }
-            document.getElementById('logout-pin-modal').classList.add('hidden');
-        } else {
-            currentSessionId = null;
-            currentCashier = null;
-            loginOverlay.classList.remove('hidden');
-            if (activeCashierLabel) activeCashierLabel.innerHTML = `<i class="fa-solid fa-user mr-1"></i> -`;
-            
-            // Kosongkan input PIN standar
-            const loginPinEl = document.getElementById('login-pin');
-            if(loginPinEl) loginPinEl.value = "";
         }
     });
 }
