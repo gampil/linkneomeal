@@ -138,13 +138,13 @@ function setupRealtimeListeners() {
         calculateFinancials();
     });
 
-    db.ref('customers').on('value', (snap) => {
-        savedCustomersArray = [];
-        if (snap.exists()) {
-            snap.forEach(child => { savedCustomersArray.push(child.val()); });
-        }
-        renderCustomerList();
-    });
+  db.ref('customers').on('value', (snap) => {
+    savedCustomersArray = [];
+    if (snap.exists()) {
+        snap.forEach(child => { savedCustomersArray.push(child.val()); });
+    }
+    renderCustomerList(); // Ini akan memicu dropdown terisi otomatis
+});
 
     db.ref('expenses').on('value', (snap) => {
         globalExpenses = [];
@@ -768,32 +768,70 @@ function renderCustomerList() {
     });
 }
 
-function renderPromoCustomers() {
+// 1. Update fungsi render untuk membaca dari node 'customers'
+async function renderPromoCustomers() {
     const container = document.getElementById('promo-customer-list');
     if (!container) return;
+    
+    // Ambil data langsung dari Firebase node 'customers'
+    const snap = await db.ref('customers').once('value');
+    let customersList = [];
+    if (snap.exists()) {
+        snap.forEach(child => {
+            customersList.push({ key: child.key, ...child.val() });
+        });
+    }
+
     const search = document.getElementById('search-promo-customer').value.toLowerCase();
-    let unique = []; let seen = new Set();
-    transactions.forEach(t => {
-        let phoneStr = String(t.phone || ''); 
-        if (phoneStr.length > 5 && t.customer && t.customer.toLowerCase() !== 'umum') {
-            const p = phoneStr.replace(/[^0-9+]/g, '');
-            if(p.length > 5 && !seen.has(p)) { seen.add(p); unique.push({name: t.customer, phone: p}); }
-        }
-    });
-    const filtered = unique.filter(u => u.name.toLowerCase().includes(search));
-    container.innerHTML = filtered.length === 0 ? '<div class="text-center text-xs text-gray-400 py-6">Belum ada pelanggan dengan No WA.</div>' : '';
+    const filtered = customersList.filter(u => u.name.toLowerCase().includes(search));
+
+    container.innerHTML = filtered.length === 0 ? '<div class="text-center text-xs text-gray-400 py-6">Belum ada member terdaftar.</div>' : '';
+    
     filtered.forEach(c => {
         container.innerHTML += `
-            <div class="flex justify-between items-center bg-gray-50 hover:bg-emerald-50 p-3 rounded-xl border border-gray-100 transition mb-2">
+            <div class="flex justify-between items-center bg-gray-50 p-3 rounded-xl border border-gray-100 mb-2">
                 <div>
                     <h4 class="font-bold text-gray-800 text-sm">${c.name}</h4>
-                    <p class="text-[10px] text-gray-500 font-mono"><i class="fa-solid fa-phone mr-1"></i>${c.phone}</p>
+                    <p class="text-[10px] text-gray-500 font-mono"><i class="fa-solid fa-phone mr-1"></i>${c.phone || '-'}</p>
                 </div>
-                <button onclick="sendWaPromo('${c.phone}', '${c.name.replace(/'/g, "\\'")}')" class="bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-2 rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-sm">
-                    <i class="fa-brands fa-whatsapp text-sm"></i> Kirim Promo
-                </button>
+                <div class="flex gap-2">
+                    <button onclick="editPromoCustomer('${c.key}')" class="bg-blue-50 text-blue-600 px-3 py-2 rounded-lg text-xs font-bold transition">Edit</button>
+                    <button onclick="sendWaPromo('${c.phone}', '${c.name.replace(/'/g, "\\'")}')" class="bg-emerald-500 text-white px-3 py-2 rounded-lg text-xs font-bold transition flex items-center gap-1.5">
+                        <i class="fa-brands fa-whatsapp"></i> Promo
+                    </button>
+                </div>
             </div>`;
     });
+}
+
+// 2. Tambahkan fungsi Edit
+function editPromoCustomer(key) {
+    // Kita ambil data dari 'customers' atau gunakan data dari list
+    db.ref('customers/' + key).once('value', (snap) => {
+        const c = snap.val();
+        document.getElementById('edit-cust-key').value = key;
+        document.getElementById('edit-cust-name').value = c.name;
+        document.getElementById('edit-cust-phone').value = c.phone || '';
+        document.getElementById('promo-edit-modal').classList.remove('hidden');
+    });
+}
+
+async function savePromoCustomer() {
+    const key = document.getElementById('edit-cust-key').value;
+    const name = document.getElementById('edit-cust-name').value.trim();
+    const phone = document.getElementById('edit-cust-phone').value.trim() || '-';
+    
+    try {
+        if (key !== name) {
+            await db.ref('customers/' + key).remove();
+        }
+        await db.ref('customers/' + name).set({ name, phone });
+        alert("Member berhasil diupdate!");
+        document.getElementById('promo-edit-modal').classList.add('hidden');
+        renderPromoCustomers();
+    } catch (e) {
+        alert("Gagal: " + e.message);
+    }
 }
 
 function sendWaPromo(phone, name) {
@@ -1001,6 +1039,7 @@ async function processCheckout() {
         quote: getRandomQuote()
     };
 
+    // 1. Kurangi Stok
     cart.forEach(cartItem => {
         const prod = products.find(p => String(p.id) === String(cartItem.id));
         if (prod) prod.stock = Math.max(0, (prod.stock || 0) - cartItem.qty);
@@ -1012,24 +1051,46 @@ async function processCheckout() {
     
     clearCart(true); 
     setCustomerMode('new');
-
+    renderCustomerList();
+    
     showToast('Menyinkronkan nota ke database...', 'loading');
     
-    db.ref('transactions/' + transactionData.id).set(transactionData)
-    .then(() => {
+    // 2. Simpan Transaksi ke Firebase
+ try {
+        await db.ref('transactions/' + transactionData.id).set(transactionData);
         showToast('Nota berhasil diamankan ke Database!', 'success');
         playSuccessSound();
         transactionData.items.forEach(soldItem => {
             const prod = products.find(p => String(p.id) === String(soldItem.id));
             if (prod) { db.ref('products/' + prod.id).update({ stock: prod.stock }); }
         });
-    })
-    .catch(e => { 
-        console.error(e); 
-        showToast('Koneksi terputus. Gagal sinkronisasi.', 'error'); 
-    });
-}
+    } catch (e) { 
+        console.error("Gagal simpan transaksi:", e); 
+        showToast('Gagal sinkronisasi transaksi.', 'error'); 
+    }
 
+// 3. SIMPAN PELANGGAN (VERSI DEBUGGING)
+    if (customer && customer.trim().toLowerCase() !== 'umum') {
+        // Sanitasi nama: Firebase tidak mengizinkan karakter . # $ [ ] /
+        // Kita ubah karakter tersebut menjadi "_"
+        const cleanName = customer.trim().replace(/[.#$[\]/]/g, "_");
+        
+        try {
+            // Kita coba tulis data ke Firebase
+            await db.ref('customers/' + cleanName).set({
+                name: customer.trim(),
+                phone: phone || '-'
+            });
+            
+            console.log("Berhasil simpan ke: customers/" + cleanName);
+            renderCustomerList(); 
+        } catch (err) {
+            console.error("Gagal simpan:", err);
+            // KITA PAKAI ALERT SUPAYA ANDA TAHU PESAN ERRORNYA
+            alert("Gagal simpan pelanggan ke Database: " + err.message);
+        }
+    }
+}
 function renderStrukList() {
     const container = document.getElementById('struk-list');
     if (!container) return;
@@ -1517,7 +1578,7 @@ async function handleModalCheckout() {
         }
     }
 
-    const activeCashier = document.getElementById('active-cashier-name').innerText || "Kasir";
+    const activeCashier = document.getElementById('active-cashier-name') ? document.getElementById('active-cashier-name').innerText : "Kasir";
     const total = parseInt(document.getElementById('txt-total-modal').innerText.replace(/[^0-9]/g, '')) || 0;
     
     const newTrx = {
@@ -1536,17 +1597,31 @@ async function handleModalCheckout() {
     };
 
     try {
+        // 1. Simpan Transaksi
         await db.ref('transactions/' + newTrx.id).set(newTrx);
+        
+        // 2. Update Stok
         cart.forEach(item => {
             const p = products.find(prod => String(prod.id) === String(item.id));
             if(p) db.ref('products/' + p.id).update({ stock: Math.max(0, (parseInt(p.stock) || 0) - item.qty) });
         });
+
+        // 3. SIMPAN PELANGGAN (DITAMBAHKAN DI SINI)
+        if (customerName && customerName.toLowerCase() !== 'umum') {
+            const cleanName = customerName.trim().replace(/[.#$[\]/]/g, "_");
+            await db.ref('customers/' + cleanName).set({
+                name: customerName.trim(),
+                phone: '-' // Jika ada input phone di modal, ganti '-' dengan phone
+            });
+            console.log("Member berhasil disimpan via Modal!");
+        }
+
         openInvoiceModal(newTrx);
         clearCart(true); 
         closePaymentModal();
     } catch (err) {
         console.error(err);
-        alert("Gagal memproses transaksi.");
+        alert("Gagal memproses transaksi: " + err.message);
     }
 }
 
