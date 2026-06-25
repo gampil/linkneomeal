@@ -158,7 +158,7 @@ function setupRealtimeListeners() {
 function listenToActiveSession() {
     db.ref('attendance').orderByKey().limitToLast(1).on('value', (snapshot) => {
         let activeSessionFound = false;
-        let currentCashier = "Kasir"; 
+        currentCashier = "Kasir"; 
 
         snapshot.forEach((child) => {
             const data = child.val();
@@ -359,15 +359,18 @@ async function handleLogout() {
 }
 
 function calculateShiftRecap() {
-    const todayPrefix = getFormattedDate().split(' ')[0]; 
+    const todayPrefix = getFormattedDate().split(' ')[0];
     let totalNota = 0; let omset = 0; let tunai = 0; let qris = 0; let debit = 0;
 
-    const activeCashier = String(currentCashier || '').trim().toLowerCase();
+    // PERBAIKAN: Ambil nama kasir dari DOM UI yang paling akurat
+    const cashierNameStr = document.getElementById('active-cashier-name') ? document.getElementById('active-cashier-name').innerText.trim() : (currentCashier || "Kasir");
+    const activeCashier = cashierNameStr.toLowerCase();
 
     transactions.forEach(t => {
         const tDate = String(t.date || '');
         const tCashier = String(t.cashier || '').trim().toLowerCase();
-        
+
+        // Pencocokan kasir dan tanggal hari ini
         if (tDate.startsWith(todayPrefix) && tCashier === activeCashier) {
             totalNota++;
             let val = parseInt(t.total) || 0;
@@ -381,7 +384,8 @@ function calculateShiftRecap() {
         }
     });
 
-    return { kasir: currentCashier || "Kasir", waktu: getFormattedDate(), totalNota, omset, tunai, qris, debit };
+    // PERBAIKAN: Gunakan cashierNameStr yang diambil di atas untuk data print
+    return { kasir: cashierNameStr, waktu: getFormattedDate(), totalNota, omset, tunai, qris, debit };
 }
 
 // ------------------------------------------------------------------------
