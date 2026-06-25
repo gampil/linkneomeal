@@ -396,6 +396,23 @@ function renderAllUI() {
     renderStrukList(); renderPromoCustomers(); renderCustomerList(); calculateFinancials();
 }
 
+// ==========================================
+// TAMBAHKAN FUNGSI LOADING INI
+// ==========================================
+function showLoading(containerId) {
+    const container = document.getElementById(containerId);
+    if(container) {
+        container.innerHTML = `
+            <div class="flex flex-col items-center justify-center py-12 w-full col-span-full">
+                <i class="fa-solid fa-spinner animate-spin text-3xl text-emerald-500 mb-3"></i>
+                <p class="text-[11px] font-bold text-gray-400 animate-pulse uppercase tracking-widest">Memuat Data...</p>
+            </div>`;
+    }
+}
+
+// ==========================================
+// TIMPA FUNGSI switchPage() YANG LAMA DENGAN INI
+// ==========================================
 function switchPage(pageId, btnElement) {
     document.querySelectorAll('.page-content').forEach(p => p.classList.add('hidden'));
     document.getElementById(`page-${pageId}`).classList.remove('hidden');
@@ -416,10 +433,8 @@ function switchPage(pageId, btnElement) {
         }
     }
 
-    // LOGIKA TAMPILKAN/SEMBUNYIKAN TOMBOL MELAYANG
     const floatingCart = document.getElementById('floating-cart-btn');
     if (floatingCart) {
-        // Hanya munculkan jika sedang di layar Kasir DAN ada barang di keranjang
         if (pageId === 'kasir' && typeof cart !== 'undefined' && cart.length > 0) {
             floatingCart.classList.remove('translate-y-32', 'opacity-0', 'pointer-events-none');
         } else {
@@ -427,11 +442,28 @@ function switchPage(pageId, btnElement) {
         }
     }
 
-    if(pageId === 'kasir') { renderKasirProducts(); renderCart(); renderCustomerList(); }
-    if(pageId === 'produk') { renderProductTable(); resetProductForm(); }
-    if(pageId === 'struk') renderStrukList();
-    if(pageId === 'promo') renderPromoCustomers();
-    if(pageId === 'keuangan') calculateFinancials();
+    // EFEK LOADING SAAT PINDAH HALAMAN
+    if(pageId === 'kasir') { 
+        showLoading('kasir-products-grid');
+        setTimeout(() => { renderKasirProducts(); renderCart(); renderCustomerList(); }, 250);
+    }
+    if(pageId === 'produk') { 
+        showLoading('product-table-body');
+        setTimeout(() => { renderProductTable(); resetProductForm(); }, 250);
+    }
+    if(pageId === 'struk') {
+        showLoading('struk-list');
+        setTimeout(() => renderStrukList(), 250);
+    }
+    if(pageId === 'promo') {
+        showLoading('promo-customer-list');
+        setTimeout(() => renderPromoCustomers(), 250);
+    }
+    if(pageId === 'keuangan') {
+        showLoading('cashier-list-pemasukan');
+        showLoading('cashier-list-pengeluaran');
+        setTimeout(() => calculateFinancials(), 250);
+    }
 }
 
 let isSidebarOpen = true;
@@ -1098,38 +1130,95 @@ async function processCheckout() {
 function renderStrukList() {
     const container = document.getElementById('struk-list');
     if (!container) return;
-    container.innerHTML = transactions.length === 0 ? '<div class="text-center text-sm text-gray-400 py-6">Belum ada riwayat transaksi.</div>' : '';
+
+    // Logika Pencarian
+    const searchInput = document.getElementById('search-struk');
+    const search = searchInput ? searchInput.value.toLowerCase() : '';
+
+    const filteredTrx = transactions.filter(t => {
+        const idMatch = t.id && t.id.toLowerCase().includes(search);
+        const custMatch = t.customer && t.customer.toLowerCase().includes(search);
+        const dateMatch = t.date && t.date.toLowerCase().includes(search);
+        return idMatch || custMatch || dateMatch;
+    });
+
+    if (filteredTrx.length === 0) {
+        container.innerHTML = '<div class="text-center text-sm text-gray-400 py-10 flex flex-col items-center"><i class="fa-solid fa-file-invoice text-4xl mb-3 opacity-30"></i>Data nota tidak ditemukan.</div>';
+        return;
+    }
     
-    transactions.forEach(t => {
+    let htmlBuffer = '';
+    filteredTrx.forEach(t => {
         let subtotal = 0;
         const itemsArray = Array.isArray(t.items) ? t.items : [];
         itemsArray.forEach(i => subtotal += (i.price * i.qty));
         
         let discountPercent = subtotal > 0 && t.discount > 0 ? Math.round((t.discount / subtotal) * 100) : 0;
-        let itemsHtml = itemsArray.map(i => `<div class="flex justify-between text-xs text-gray-500 font-mono"><span>${i.name} (x${i.qty})</span><span>Rp ${(i.price * i.qty).toLocaleString('id-ID')}</span></div>`).join('');
-        const discHtml = t.discount > 0 ? `<div class="flex justify-between text-xs font-bold text-red-500 pt-1"><span>Diskon (${discountPercent}%)</span><span>- Rp ${t.discount.toLocaleString('id-ID')}</span></div>` : '';
-        const phoneTxt = t.phone ? ` | WA: <b>${t.phone}</b>` : '';
-        const typeBadge = t.orderType ? ` | Tipe: <b>${t.orderType}</b>` : ''; 
         
-        container.innerHTML += `
-            <div class="bg-white border border-gray-100 p-4 rounded-2xl shadow-sm space-y-2 text-xs mb-3 transition-all hover:shadow-md">
-                <div class="flex justify-between items-center font-bold text-gray-700">
-                    <span>ID: ${t.id}</span>
-                    <span class="bg-emerald-100 text-emerald-700 font-bold px-2.5 py-1 rounded-lg text-[10px] uppercase tracking-wider">${t.method}</span>
+        // Rincian Item (Tanpa background/div tambahan)
+        let itemsHtml = itemsArray.map(i => `
+            <div class="flex justify-between items-start text-xs text-gray-600 mb-1.5">
+                <div class="flex-1 pr-2">
+                    <span class="font-bold text-gray-800">${i.name}</span>
+                    <span class="text-[10px] text-gray-400 block mt-0.5">${i.qty} x Rp ${parseInt(i.price).toLocaleString('id-ID')}</span>
                 </div>
-                <div class="text-[10px] text-gray-400"><p>Waktu: <b>${t.date}</b> | Cust: <b>${t.customer}</b>${phoneTxt}${typeBadge}</p></div>
-                <div class="border-t border-b border-dashed border-gray-200 py-2 space-y-1.5">${itemsHtml}${discHtml}</div>
-                <div class="flex justify-between items-center font-black text-sm text-gray-800">
-                    <span>TOTAL</span>
-                    <span class="text-emerald-600 text-sm">Rp ${(parseInt(t.total)||0).toLocaleString('id-ID')}</span>
+                <span class="font-bold text-gray-800 mt-0.5">Rp ${(i.price * i.qty).toLocaleString('id-ID')}</span>
+            </div>`).join('');
+            
+        const discHtml = t.discount > 0 ? `
+            <div class="flex justify-between items-center text-xs text-red-500 mt-2 border-t border-dashed border-gray-200 pt-2">
+                <span class="font-bold">Diskon (${discountPercent}%)</span>
+                <span class="font-black">- Rp ${t.discount.toLocaleString('id-ID')}</span>
+            </div>` : '';
+            
+        // Warna lencana (badge) disesuaikan tipe pembayaran
+        const badgeColor = t.method.toLowerCase() === 'tunai' || t.method.toLowerCase() === 'cash' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 
+                          (t.method.toLowerCase() === 'qris' ? 'bg-blue-50 text-blue-600 border-blue-100' : 'bg-amber-50 text-amber-600 border-amber-100');
+        
+        htmlBuffer += `
+            <div class="bg-white border border-gray-200 p-4 rounded-2xl shadow-sm mb-4 transition-all hover:shadow-md hover:border-emerald-200">
+                
+                <div class="flex justify-between items-start mb-3">
+                    <div>
+                        <div class="flex items-center gap-1.5 mb-1 flex-wrap">
+                            <span class="font-black text-sm text-gray-800">#${t.id}</span>
+                            <span class="px-2 py-0.5 rounded text-[9px] font-bold border uppercase tracking-wide ${badgeColor}">${t.method}</span>
+                            <span class="px-2 py-0.5 rounded text-[9px] font-bold border bg-gray-50 text-gray-500 border-gray-200 uppercase">${t.orderType || 'Dine In'}</span>
+                        </div>
+                        <div class="text-[10px] text-gray-400 font-medium">
+                            <i class="fa-regular fa-calendar-check mr-1"></i> ${t.date}
+                        </div>
+                    </div>
                 </div>
-                <div class="pt-2">
-                    <button onclick="openInvoiceModalById('${t.id}')" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white text-xs py-3 rounded-xl font-bold shadow-sm flex items-center justify-center gap-2 transition-colors active:scale-95">
-                        <i class="fa-solid fa-eye"></i> Preview & Cetak
+
+                <div class="flex items-center gap-2 mb-3">
+                    <div class="w-8 h-8 rounded-full bg-gray-100 text-gray-500 flex items-center justify-center font-black shrink-0 text-xs">
+                        <i class="fa-solid fa-user"></i>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <p class="text-xs font-bold text-gray-800 truncate">${t.customer}</p>
+                        <p class="text-[10px] text-gray-400 font-mono"><i class="fa-brands fa-whatsapp mr-1 text-emerald-500"></i> ${t.phone || '-'}</p>
+                    </div>
+                </div>
+
+                <div class="py-3 border-t border-b border-dashed border-gray-200 mb-3">
+                    ${itemsHtml}
+                    ${discHtml}
+                </div>
+
+                <div class="flex justify-between items-center">
+                    <div>
+                        <span class="block text-[9px] text-gray-400 font-bold uppercase tracking-wider mb-0.5">Total Bayar</span>
+                        <span class="font-black text-lg text-emerald-600 leading-none block">Rp ${(parseInt(t.total)||0).toLocaleString('id-ID')}</span>
+                    </div>
+                    <button onclick="openInvoiceModalById('${t.id}')" class="bg-gray-800 hover:bg-gray-900 text-white px-5 py-2.5 rounded-xl text-xs font-bold shadow-sm transition-colors active:scale-95 flex items-center gap-2">
+                        <i class="fa-solid fa-print"></i> Cetak
                     </button>
                 </div>
+
             </div>`;
     });
+    container.innerHTML = htmlBuffer;
 }
 
 // ------------------------------------------------------------------------
@@ -1193,6 +1282,9 @@ function calculateFinancials() {
         return true;
     });
 
+   // ==========================================
+    // 1. RENDER LIST PEMASUKAN (MUTASI MASUK)
+    // ==========================================
     filteredTrx.forEach(t => {
         let netto = parseInt(t.total) || 0;
         let diskon = parseInt(t.discount) || 0;
@@ -1206,17 +1298,37 @@ function calculateFinancials() {
         else if (method === 'DEBIT' || method === 'TRANSFER') totalDebit += netto;
         else totalCash += netto;
 
+        // Desain baru untuk list pemasukan
         htmlIn += `
-            <div class="bg-gray-50/70 p-3 rounded-xl border border-gray-100 flex justify-between items-center text-xs">
-                <div>
-                    <span class="bg-emerald-50 text-emerald-700 font-bold px-1.5 py-0.5 rounded text-[9px] uppercase">${t.method}</span>
-                    <span class="text-gray-400 font-mono ml-1">${t.date}</span>
-                    <p class="font-bold text-gray-700 mt-1 truncate max-w-[200px]">${t.customer || 'Umum'}</p>
+            <div class="bg-white border border-gray-100 p-3 rounded-2xl shadow-sm flex items-center gap-3 transition-all hover:shadow-md hover:border-emerald-200 mb-2">
+                <!-- Ikon Indikator -->
+                <div class="w-10 h-10 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0 font-black border border-emerald-100">
+                    <i class="fa-solid fa-arrow-turn-down"></i>
                 </div>
-                <span class="font-black text-emerald-600">+ Rp ${netto.toLocaleString('id-ID')}</span>
+                
+                <!-- Info Utama -->
+                <div class="flex-1 min-w-0">
+                    <div class="flex items-center gap-1.5 mb-0.5">
+                        <span class="font-bold text-gray-800 text-sm truncate block">${t.customer || 'Umum'}</span>
+                        <span class="px-1.5 py-0.5 bg-gray-50 text-gray-400 rounded text-[9px] font-bold border border-gray-200">#${t.id}</span>
+                    </div>
+                    <div class="flex items-center gap-1.5 text-[10px] text-gray-400 font-medium truncate">
+                        <span><i class="fa-regular fa-clock mr-0.5"></i> ${t.date}</span>
+                        <span class="text-gray-300">•</span>
+                        <span class="text-emerald-600 font-bold uppercase"><i class="fa-solid fa-wallet mr-0.5"></i> ${t.method}</span>
+                    </div>
+                </div>
+                
+                <!-- Nominal -->
+                <div class="shrink-0 text-right">
+                    <span class="block font-black text-emerald-600 text-sm">+ Rp ${netto.toLocaleString('id-ID')}</span>
+                </div>
             </div>`;
     });
 
+ // ==========================================
+    // 2. RENDER LIST PENGELUARAN (MUTASI KELUAR)
+    // ==========================================
     let expensesData = (typeof globalExpenses !== 'undefined') ? globalExpenses : [];
     const filteredExp = expensesData.filter(e => {
         if(!e.date) return false;
@@ -1238,14 +1350,28 @@ function calculateFinancials() {
         let amt = parseInt(e.amount) || 0;
         totalExpense += amt;
         
+        // Desain baru untuk list pengeluaran
         htmlOut += `
-            <div class="bg-orange-50/40 p-3 rounded-xl border border-orange-100 flex justify-between items-center text-xs">
-                <div>
-                    <span class="bg-orange-100 text-orange-700 font-bold px-1.5 py-0.5 rounded text-[9px] uppercase">KELUAR</span>
-                    <span class="text-gray-400 font-mono ml-1">${e.date}</span>
-                    <p class="font-bold text-gray-600 mt-1 truncate max-w-[200px]">${e.description}</p>
+            <div class="bg-white border border-gray-100 p-3 rounded-2xl shadow-sm flex items-center gap-3 transition-all hover:shadow-md hover:border-orange-200 mb-2">
+                <!-- Ikon Indikator -->
+                <div class="w-10 h-10 rounded-full bg-orange-50 text-orange-500 flex items-center justify-center shrink-0 font-black border border-orange-100">
+                    <i class="fa-solid fa-arrow-turn-up"></i>
                 </div>
-                <span class="font-black text-orange-600">- Rp ${amt.toLocaleString('id-ID')}</span>
+                
+                <!-- Info Utama -->
+                <div class="flex-1 min-w-0">
+                    <div class="font-bold text-gray-800 text-sm truncate block mb-0.5">${e.description}</div>
+                    <div class="flex items-center gap-1.5 text-[10px] text-gray-400 font-medium truncate">
+                        <span><i class="fa-regular fa-clock mr-0.5"></i> ${e.date}</span>
+                        <span class="text-gray-300">•</span>
+                        <span class="text-orange-500 font-bold uppercase"><i class="fa-solid fa-money-bill-transfer mr-0.5"></i> KAS KELUAR</span>
+                    </div>
+                </div>
+                
+                <!-- Nominal -->
+                <div class="shrink-0 text-right">
+                    <span class="block font-black text-orange-600 text-sm">- Rp ${amt.toLocaleString('id-ID')}</span>
+                </div>
             </div>`;
     });
 
