@@ -2,22 +2,6 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#059669">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="LinkNeoMeal">
-<link rel="apple-touch-icon" href="icon-192.png">
-
-<script>
-    if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-            navigator.serviceWorker.register('./service-worker.js')
-                .then(reg => console.log('PWA Service Worker berhasil terdaftar!', reg.scope))
-                .catch(err => console.error('Gagal mendaftarkan Service Worker:', err));
-        });
-    }
-</script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>LINKNEOMEAL - Link Neo Meal</title>
     <script src="https://cdn.tailwindcss.com"></script>
@@ -150,7 +134,10 @@
             <i class="fa-brands fa-whatsapp text-sm"></i>
             <span class="text-[10px] font-bold">Promo</span>
         </button>
-
+<button id="btn-install-pwa" onclick="installPWA()" class="nav-btn hidden w-full flex items-center gap-4 p-3.5 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-bold transition shadow-md shadow-emerald-200/50 mt-4 animate-pulse">
+    <i class="fa-solid fa-download text-lg w-5 text-center shrink-0"></i> 
+    <span class="nav-text text-sm whitespace-nowrap">Install Aplikasi</span>
+</button>
         <!-- 3. Logout -->
         <button onclick="openLogoutModal()" class="w-7 h-7 flex items-center justify-center bg-red-50 text-red-500 rounded-full hover:bg-red-100 transition border border-red-100">
             <i class="fa-solid fa-power-off text-[10px]"></i>
@@ -413,6 +400,7 @@
         <button onclick="openExpenseModal()" class="nav-btn flex flex-col items-center justify-end pb-1 text-gray-400 hover:text-orange-500 w-[20%] transition-colors">
             <i class="fa-solid fa-money-bill-transfer text-[18px] mb-1"></i><span class="text-[8px] sm:text-[9px] tracking-tight">Keluar</span>
         </button>
+        
     </nav>
 
     <div id="payment-modal" class="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4 hidden backdrop-blur-sm transition-opacity">
