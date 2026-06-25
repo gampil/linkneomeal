@@ -8,7 +8,7 @@ const firebaseConfig = {
     storageBucket: "linkneomeal-001.firebasestorage.app",
     messagingSenderId: "518165236588",
     appId: "1:518165236588:web:0606d3da403339fd620149",
-    databaseURL :"https://linkneomeal-001-default-rtdb.firebaseio.com"
+    databaseURL : "https://linkneomeal-001-default-rtdb.firebaseio.com"
 };
   
 firebase.initializeApp(firebaseConfig);
@@ -24,8 +24,10 @@ let globalVoidLogs = [];
 let ownerFinanceFilter = 'semua';
 let globalExpenses = [];
 
+// Data Keamanan Owner
+let currentOwnerPin = "1234"; // PIN Default jika belum diatur
+
 document.addEventListener("DOMContentLoaded", () => {
-    // Jalankan seluruh pemantau data real-time
     setupOwnerRealtimeListeners();
 
     // Set Default Bulan pada Rekap Absensi
@@ -40,70 +42,129 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 // ==========================================================================
-// INTEGRASI REAL-TIME SENSOR FIREBASE DB
+// 1. OTORISASI LOGIN & LOGOUT OWNER (SISTEM SESI PERMANEN)
+// ==========================================================================
+function checkLoginPersistence() {
+    const savedPin = localStorage.getItem('owner_logged_in_pin');
+    
+    // Validasi: Apakah PIN di memori HP sama dengan PIN terbaru di Database?
+    if (savedPin && savedPin === currentOwnerPin) {
+        document.getElementById('owner-login-overlay').classList.add('hidden');
+        renderHomeDashboard(); 
+    } else {
+        // Jika PIN diganti atau belum login, arahkan ke layar login
+        document.getElementById('owner-login-overlay').classList.remove('hidden');
+    }
+}
+
+function handleOwnerLogin() {
+    const pinInput = document.getElementById('owner-login-pin');
+    const pin = pinInput.value.trim();
+    
+    if (pin === currentOwnerPin) {
+        localStorage.setItem('owner_logged_in_pin', pin); // Simpan sesi login ke perangkat
+        document.getElementById('owner-login-overlay').classList.add('hidden');
+        pinInput.value = "";
+        renderHomeDashboard(); 
+    } else {
+        alert("Akses Ditolak: PIN Owner Salah!");
+        pinInput.value = "";
+    }
+}
+
+function logoutOwner() {
+    const setuju = confirm("Apakah Anda yakin ingin keluar dari Sesi Owner?");
+    if (!setuju) return;
+    
+    localStorage.removeItem('owner_logged_in_pin'); // Hapus sesi login dari memori perangkat
+    document.getElementById('owner-login-overlay').classList.remove('hidden');
+    
+    // Tutup laci menu hamburger jika sedang terbuka
+    const drawer = document.getElementById('mobile-menu-drawer');
+    if(drawer && !drawer.classList.contains('-translate-x-full')) {
+        toggleMobileMenu();
+    }
+    switchTab('home'); 
+}
+
+// ==========================================================================
+// 2. INTEGRASI REAL-TIME SENSOR FIREBASE DB
 // ==========================================================================
 function setupOwnerRealtimeListeners() {
-    // 1. Monitor Master Produk & HPP
+    // Pantau PIN Owner
+    db.ref('owner_pin').on('value', (snap) => {
+        if(snap.exists()) currentOwnerPin = String(snap.val());
+        else currentOwnerPin = "1234";
+        checkLoginPersistence();
+    });
+
+    // LISTENER PRODUK - Pastikan ini dipanggil tepat
     db.ref('products').on('value', (snap) => {
         globalProducts = [];
         if (snap.exists()) {
-            snap.forEach(child => { globalProducts.push(child.val()); });
+            snap.forEach(child => {
+                let p = child.val();
+                p.id = child.key; // Pastikan ID diambil dari key Firebase
+                globalProducts.push(p);
+            });
         }
+        console.log("Data Produk Diterima:", globalProducts); // Debug: Cek di console browser
         renderProductsOwner();
-        // Hitung ulang keuangan karena perubahan data produk/HPP memengaruhi profit
         renderKeuangan(); 
     });
 
-    // 2. Monitor Transaksi Masuk
-    db.ref('transactions').on('value', (snap) => {
-        globalTransactions = [];
-        if (snap.exists()) {
-            snap.forEach(child => { globalTransactions.push(child.val()); });
-            globalTransactions.reverse(); 
-        }
-        renderKeuangan();
-    });
+db.ref('transactions').on('value', (snap) => {
+    globalTransactions = [];
+    if (snap.exists()) {
+        snap.forEach(child => { 
+            let t = child.val();
+            // PENTING: Pastikan ID disimpan di dalam objek agar bisa diproses
+            if(!t.id) t.id = child.key; 
+            globalTransactions.push(t); 
+        });
+        console.log("Total Transaksi dari Firebase:", globalTransactions.length); // <--- CEK INI DI CONSOLE BROWSER
+    }
+    renderKeuangan();
+    renderHomeDashboard(); 
+});
 
-    // 3. Monitor Kehadiran Kasir (Log & Live Shift)
     db.ref('attendance').on('value', (snap) => {
         globalAttendanceData = [];
         if (snap.exists()) {
-            snap.forEach(child => { globalAttendanceData.push(child.val()); });
+            snap.forEach(child => globalAttendanceData.push(child.val()));
             globalAttendanceData.reverse(); 
         }
         renderLogAbsensi();
         renderRekapAbsensi();
         renderLiveMonitorShift();
+        renderHomeDashboard(); 
     });
 
-    // 4. Monitor Otorisasi PIN Akun Kasir
     db.ref('cashier_pins').on('value', (snap) => {
         renderConfiguredPins(snap);
     });
 
-    // 5. Monitor Aktivitas Void / Penghapusan
     db.ref('void_logs').on('value', (snap) => {
         globalVoidLogs = [];
         if (snap.exists()) {
-            snap.forEach(child => { globalVoidLogs.push(child.val()); });
+            snap.forEach(child => globalVoidLogs.push(child.val()));
             globalVoidLogs.reverse();
         }
         renderVoidLogs();
     });
+
     db.ref('expenses').on('value', (snap) => {
         globalExpenses = [];
-        if (snap.exists()) {
-            snap.forEach(child => { globalExpenses.push(child.val()); });
-        }
-        renderKeuangan(); // Hitung ulang saat ada pengeluaran baru
+        if (snap.exists()) snap.forEach(child => globalExpenses.push(child.val()));
+        renderKeuangan(); 
     });
 }
 
 // ==========================================================================
-// 1. NAVIGASI SWITCH TAB (TEMA EMERALD UNIFIED)
+// 3. NAVIGASI SWITCH TAB 
 // ==========================================================================
 function switchTab(tabId) {
-    const panels = ['keuangan', 'produk', 'pengaturan', 'rekapabsensi', 'absensi', 'void'];
+    const panels = ['home', 'keuangan', 'produk', 'pengaturan', 'rekapabsensi', 'absensi', 'void', 'sistem'];
     panels.forEach(p => {
         const el = document.getElementById(`panel-${p}`);
         if(el) el.classList.add('hidden');
@@ -115,8 +176,6 @@ function switchTab(tabId) {
     panels.forEach(p => {
         const dTab = document.getElementById(`tab-desktop-${p}`);
         if(dTab) dTab.className = desktopInactive;
-        const mTab = document.getElementById(`tab-mobile-${p}`);
-        if(mTab) mTab.className = "flex-1 min-w-[70px] flex flex-col items-center justify-center p-2 text-gray-400 hover:text-emerald-600 transition";
     });
 
     const activePanel = document.getElementById(`panel-${tabId}`);
@@ -125,47 +184,181 @@ function switchTab(tabId) {
     const activeDTab = document.getElementById(`tab-desktop-${tabId}`);
     if(activeDTab) activeDTab.className = desktopActive;
     
-    const activeMTab = document.getElementById(`tab-mobile-${tabId}`);
-    if(activeMTab) activeMTab.className = "flex-1 min-w-[70px] flex flex-col items-center justify-center p-2 text-emerald-600 font-bold transition";
+    if(tabId === 'home') renderHomeDashboard();
 }
 
 // ==========================================================================
-// 2. LOGIKA KEUANGAN, PROFIT BERSIH & MENU TERLARIS
+// 4. HOME DASHBOARD (PENJUALAN HARI INI & KASIR AKTIF)
 // ==========================================================================
+function renderHomeDashboard() {
+    const todayStr = new Date().toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    
+    // Hitung Penjualan Kotor Hari ini (Total Transaksi + Diskon yang diberikan)
+    let todaySales = 0;
+    globalTransactions.forEach(t => {
+        if (t.date && t.date.startsWith(todayStr)) {
+            todaySales += (parseInt(t.total) || 0) + (parseInt(t.discount) || 0);
+        }
+    });
+
+    const salesEl = document.getElementById('home-total-sales');
+    if(salesEl) salesEl.innerText = `Rp ${todaySales.toLocaleString('id-ID')}`;
+
+    // Hitung Kasir yang Laci/Shift-nya Aktif saat ini
+    let activeCount = 0;
+    globalAttendanceData.forEach(a => {
+        if (a.status === 'Sedang Bekerja' && a.loginTime && a.loginTime.startsWith(todayStr)) {
+            activeCount++;
+        }
+    });
+
+    const cashierEl = document.getElementById('home-active-cashiers');
+    if(cashierEl) cashierEl.innerHTML = `${activeCount} <span class="text-sm text-white md:text-gray-500 font-bold ml-1">Orang</span>`;
+}
+
+// ==========================================================================
+// 5. PENGATURAN OWNER (UBAH PIN & MANAJEMEN DATABASE)
+// ==========================================================================
+
+async function changeOwnerPin(e) {
+    e.preventDefault();
+    const oldPin = document.getElementById('config-owner-old-pin').value;
+    const newPin = document.getElementById('config-owner-new-pin').value;
+    const btn = document.getElementById('btn-save-owner-pin');
+    
+    if (oldPin !== currentOwnerPin) return alert("Verifikasi Gagal: PIN Lama yang Anda masukkan salah!");
+    if (newPin.length !== 4) return alert("PIN Baru harus terdiri dari 4 angka!");
+
+    const originalText = btn.innerHTML;
+    btn.innerHTML = `<i class="fa-solid fa-spinner animate-spin"></i> Menyimpan...`;
+    btn.disabled = true;
+
+    try {
+        await db.ref('owner_pin').set(newPin);
+        localStorage.setItem('owner_logged_in_pin', newPin); // Langsung perbarui memori lokal agar tidak logout
+        alert("Berhasil! PIN Keamanan Owner telah diperbarui.");
+        e.target.reset();
+    } catch (err) {
+        alert("Gagal memperbarui PIN, periksa koneksi internet Anda.");
+        console.error(err);
+    } finally {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+    }
+}
+
+async function backupDatabaseNode() {
+    const node = document.getElementById('db-node-select').value;
+    
+    try {
+        const snapshot = await db.ref(node).once('value');
+        if (!snapshot.exists()) {
+            alert(`Tidak ada data tersimpan pada kategori [${node}]. File kosong.`);
+            return;
+        }
+
+        const dataObj = snapshot.val();
+        let rows = [];
+
+        for (let key in dataObj) {
+            let item = dataObj[key];
+            let flatItem = {};
+            for (let prop in item) {
+                if (typeof item[prop] === 'object') {
+                    flatItem[prop] = JSON.stringify(item[prop]); // Stringify objek array seperti isi keranjang
+                } else {
+                    flatItem[prop] = item[prop];
+                }
+            }
+            rows.push(flatItem);
+        }
+
+        const ws = XLSX.utils.json_to_sheet(rows);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, node);
+        XLSX.writeFile(wb, `Backup_${node}_${new Date().toISOString().slice(0,10)}.xlsx`);
+        
+        alert(`SUKSES: File Excel untuk backup database [${node}] berhasil diunduh!`);
+        
+    } catch (err) {
+        alert("Gagal melakukan backup cloud. Cek koneksi internet Anda.");
+        console.error(err);
+    }
+}
+
+async function deleteDatabaseNode() {
+    const node = document.getElementById('db-node-select').value;
+    const textConfirm = prompt(`TINDAKAN BERBAHAYA!\nAnda akan MENGHAPUS SEMUA DATA PERMANEN pada [${node}].\nKetik "HAPUS" (huruf besar) untuk melanjutkan:`);
+    
+    if (textConfirm !== "HAPUS") {
+        alert("Tindakan penghapusan dibatalkan demi keamanan.");
+        return;
+    }
+
+    try {
+        // Ini adalah eksekusi ke database untuk membersihkan seluruh isinya
+        await db.ref(node).set(null);
+        
+        // Alert sukses akan muncul SEKARANG karena bug di kode sebelumnya sudah dihilangkan
+        alert(`SUKSES! Seluruh data pada database [${node}] telah dihapus secara permanen dari server.`);
+    } catch (err) {
+        alert(`Gagal menghapus [${node}]. Periksa koneksi internet.`);
+        console.error(err);
+    }
+}
+
+// ==========================================================================
+// 6. LOGIKA KEUANGAN, PROFIT BERSIH & MENU TERLARIS
+// ==========================================================================
+// 1. Fungsi Parser Tanggal yang Lebih Kuat (Mendukung DD/MM/YYYY atau ISO String)
 function parseDateOwner(dateStr) {
-    if (!dateStr) return new Date();
+    if (!dateStr) return new Date(0); // Jika kosong, set ke tanggal paling lama
     let str = String(dateStr).trim();
+    
+    // Jika format DD/MM/YYYY HH:MM
     if (str.includes('/')) {
         const parts = str.split(' ');
         const dateParts = parts[0].split('/');
         return new Date(dateParts[2], dateParts[1] - 1, dateParts[0]);
     }
+    // Jika format ISO standar
     return new Date(str);
 }
 
+// 2. Fungsi Filter yang Diperbarui
 function setOwnerFinanceFilter(type) {
     ownerFinanceFilter = type;
     document.querySelectorAll('.flt-btn').forEach(b => { 
         b.className = "flt-btn px-3 py-2 text-xs font-bold rounded-xl border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 transition"; 
     });
+    
     const activeBtn = document.getElementById(`btn-flt-${type}`);
     if(activeBtn) activeBtn.className = "flt-btn px-3 py-2 text-xs font-bold rounded-xl border border-emerald-600 bg-emerald-600 text-white transition shadow-sm";
     
     const dateInputs = document.getElementById('kustom-date-inputs');
     if(dateInputs) dateInputs.classList.toggle('hidden', type !== 'kustom');
+    
+    // PENTING: Panggil renderKeuangan() setelah filter berubah
     renderKeuangan(); 
 }
 
+// 3. Logika Penyaringan Data
 function getFilteredTransactions() {
     const today = new Date(); 
     const curDate = today.getDate(); 
     const curMonth = today.getMonth(); 
     const curYear = today.getFullYear();
     
+    // Debug: Cek apakah data masuk ke filter
+    console.log("Jumlah data sebelum filter:", globalTransactions.length);
+
     return globalTransactions.filter(t => {
         if(!t.date) return false;
         const tDate = parseDateOwner(t.date); 
         
+        // Cek validitas tanggal
+        if (isNaN(tDate.getTime())) return false; 
+
         if (ownerFinanceFilter === 'hari') {
             return tDate.getDate() === curDate && tDate.getMonth() === curMonth && tDate.getFullYear() === curYear;
         }
@@ -180,7 +373,7 @@ function getFilteredTransactions() {
             const end = new Date(ed); end.setHours(23,59,59,999);
             return tDate >= start && tDate <= end;
         }
-        return true; 
+        return true; // Untuk filter 'semua'
     });
 }
 
@@ -201,7 +394,6 @@ function renderKeuangan() {
     let productSalesCounter = {};
     const filteredData = getFilteredTransactions();
 
-    // -- RENDER DATA PEMASUKAN --
     filteredData.forEach(t => {
         let netto = parseInt(t.total) || 0; 
         let diskon = parseInt(t.discount) || 0;
@@ -228,7 +420,7 @@ function renderKeuangan() {
         }).join('');
         
         htmlPemasukan += `
-            <div class="bg-white p-4 rounded-2xl shadow-sm border border-sage-100 flex flex-col gap-3 hover:shadow-md transition">
+            <div class="bg-white p-4 rounded-2xl shadow-sm border border-emerald-100 flex flex-col gap-3 hover:shadow-md transition">
                 <div class="flex justify-between items-start border-b border-gray-50 pb-3">
                     <div class="flex gap-3">
                         <div class="w-10 h-10 rounded-xl bg-gray-50 text-emerald-600 flex items-center justify-center shrink-0 border border-gray-100">
@@ -249,7 +441,6 @@ function renderKeuangan() {
             </div>`;
     });
 
-    // -- RENDER DATA PENGELUARAN --
     const filteredExpenses = globalExpenses.filter(e => {
         if(!e.date) return false;
         const eDate = parseDateOwner(e.date);
@@ -291,14 +482,12 @@ function renderKeuangan() {
             </div>`;
     });
 
-    // MASUKKAN KE MASING-MASING CONTAINER
     if(htmlPemasukan !== '') listPemasukan.innerHTML = htmlPemasukan;
-    else listPemasukan.innerHTML = `<div class="text-center text-gray-400 text-xs py-8 bg-white border border-sage-100 rounded-2xl shadow-sm">Belum ada transaksi masuk pada filter ini.</div>`;
+    else listPemasukan.innerHTML = `<div class="text-center text-gray-400 text-xs py-8 bg-white border border-gray-100 rounded-2xl shadow-sm">Belum ada transaksi masuk pada filter ini.</div>`;
 
     if(htmlPengeluaran !== '') listPengeluaran.innerHTML = htmlPengeluaran;
-    else listPengeluaran.innerHTML = `<div class="text-center text-gray-400 text-xs py-8 bg-white border border-sage-100 rounded-2xl shadow-sm">Belum ada pengeluaran pada filter ini.</div>`;
+    else listPengeluaran.innerHTML = `<div class="text-center text-gray-400 text-xs py-8 bg-white border border-gray-100 rounded-2xl shadow-sm">Belum ada pengeluaran pada filter ini.</div>`;
 
-    // KALKULASI & UPDATE ANGKA DASHBOARD
     let finalNettoOmset = totalNetto;
     let finalGrossOmset = totalNetto + totalDiskon;
     let totalProfitBersih = finalNettoOmset - totalHppAll - totalPengeluaran;
@@ -311,7 +500,6 @@ function renderKeuangan() {
     safeUpdateText('owner-total-expense', `Rp ${totalPengeluaran.toLocaleString('id-ID')}`);
     safeUpdateText('owner-total-profit', `Rp ${totalProfitBersih.toLocaleString('id-ID')}`);
     
-    safeUpdateText('owner-total-trx', `${filteredData.length} Nota`);
     safeUpdateText('rep-cash-txt', `Rp ${totalCash.toLocaleString('id-ID')}`);
     safeUpdateText('rep-qris-txt', `Rp ${totalQris.toLocaleString('id-ID')}`);
     safeUpdateText('rep-debit-txt', `Rp ${totalDebit.toLocaleString('id-ID')}`);
@@ -324,13 +512,20 @@ function updateFinanceChart(filteredData) {
     const ctx = document.getElementById('financeChart');
     if (!ctx) return;
 
-    const chartData = [...filteredData].reverse();
+    const sortedData = [...filteredData].sort((a, b) => parseDateOwner(a.date) - parseDateOwner(b.date));
     const aggregatedData = {};
 
-    chartData.forEach(t => {
-        let label = (ownerFinanceFilter === 'hari') ? (t.date.split(' ')[1] ? t.date.split(' ')[1].split(':')[0] + ':00' : t.date) : t.date.split(' ')[0];
-        if (!aggregatedData[label]) aggregatedData[label] = 0;
-        aggregatedData[label] += (parseInt(t.total) || 0);
+    sortedData.forEach(t => {
+        let label = t.date.split(' ')[0];
+        if (!aggregatedData[label]) aggregatedData[label] = { omset: 0, diskon: 0, pengeluaran: 0 };
+        aggregatedData[label].omset += (parseInt(t.total) || 0);
+        aggregatedData[label].diskon += (parseInt(t.discount) || 0);
+    });
+
+    globalExpenses.forEach(e => {
+        let label = e.date.split(' ')[0];
+        if (!aggregatedData[label]) aggregatedData[label] = { omset: 0, diskon: 0, pengeluaran: 0 };
+        aggregatedData[label].pengeluaran += (parseInt(e.amount) || 0);
     });
 
     if (window.financeChartInstance) window.financeChartInstance.destroy();
@@ -339,23 +534,37 @@ function updateFinanceChart(filteredData) {
         type: 'bar', 
         data: {
             labels: Object.keys(aggregatedData),
-            datasets: [{
-                label: 'Omset Bersih',
-                data: Object.values(aggregatedData),
-                backgroundColor: '#059669',
-                hoverBackgroundColor: '#10b981',
-                borderRadius: 6, 
-                borderSkipped: false,
-                barPercentage: 0.6 
-            }]
+            datasets: [
+                {
+                    label: 'Omset Bersih',
+                    data: Object.values(aggregatedData).map(d => d.omset),
+                    backgroundColor: '#059669',
+                    borderRadius: 4
+                },
+                {
+                    label: 'Diskon',
+                    data: Object.values(aggregatedData).map(d => d.diskon),
+                    backgroundColor: '#f59e0b',
+                    borderRadius: 4
+                },
+                {
+                    label: 'Pengeluaran',
+                    data: Object.values(aggregatedData).map(d => d.pengeluaran),
+                    backgroundColor: '#ef4444',
+                    borderRadius: 4
+                }
+            ]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            plugins: { legend: { display: false } },
+            // BAGIAN INI YANG DIUBAH: stacked: false membuat batang jadi bersebelahan
             scales: {
-                x: { grid: { display: false }, ticks: { font: { size: 10 } } },
-                y: { beginAtZero: true, grid: { borderDash: [4, 4], color: '#f3f4f6' }, ticks: { font: { size: 10 } } }
+                x: { stacked: false, grid: { display: false } },
+                y: { stacked: false, beginAtZero: true, grid: { borderDash: [4, 4] } }
+            },
+            plugins: {
+                legend: { position: 'top' }
             }
         }
     });
@@ -365,17 +574,16 @@ function renderTopProductsList(salesCounter) {
     const container = document.getElementById('top-products-list');
     if(!container) return;
 
-    // Urutkan objek penjualan dari besar ke kecil
     let sortedList = Object.keys(salesCounter).map(name => {
         return { name: name, qty: salesCounter[name] };
-    }).sort((a, b) => b.qty - a.qty).slice(0, 5); // Ambil Top 5
+    }).sort((a, b) => b.qty - a.qty).slice(0, 5); 
 
     if(sortedList.length === 0) {
         container.innerHTML = `<div class="text-center text-xs text-gray-400 py-10">Belum ada item terjual.</div>`;
         return;
     }
 
-    let maxQty = sortedList[0].qty || 1; // Untuk rasio ukuran progress bar
+    let maxQty = sortedList[0].qty || 1; 
     let html = '';
 
     sortedList.forEach((item, index) => {
@@ -400,27 +608,20 @@ function renderTopProductsList(salesCounter) {
 }
 
 // ==========================================================================
-// 3. MONITOR LIVE SHIFT KASIR (LIVE DRAWER SENSOR)
+// 7. MONITOR LIVE SHIFT KASIR 
 // ==========================================================================
 function renderLiveMonitorShift() {
     const container = document.getElementById('live-cashier-container');
     if(!container) return;
 
-    // 1. Dapatkan tanggal hari ini dengan format DD/MM/YYYY
-    const todayStr = new Date().toLocaleDateString('id-ID', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric'
-    });
+    const todayStr = new Date().toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' });
 
-    // 2. Saring data absensi: Harus berstatus 'Sedang Bekerja' DAN terjadi 'Hari Ini'
     let activeWorkers = globalAttendanceData.filter(a => {
         const isWorking = a.status === 'Sedang Bekerja';
         const isToday = a.loginTime && a.loginTime.startsWith(todayStr);
         return isWorking && isToday;
     });
 
-    // 3. Jika tidak ada kasir yang aktif hari ini, tampilkan laci terkunci
     if(activeWorkers.length === 0) {
         container.innerHTML = `
             <div class="col-span-full p-4 bg-gray-50 border border-gray-100 rounded-xl flex items-center justify-center text-xs text-gray-400 font-medium">
@@ -431,12 +632,11 @@ function renderLiveMonitorShift() {
 
     let html = '';
     activeWorkers.forEach(w => {
-        // 4. Hitung uang tunai yang terkumpul di tangan kasir ini khusus hari ini
         let totalCashInHand = 0;
 
         globalTransactions.forEach(t => {
             if(t.date && t.date.startsWith(todayStr) && String(t.cashier).toLowerCase().trim() === String(w.cashierName).toLowerCase().trim()) {
-                if(String(t.method).toLowerCase() === 'tunai') {
+                if(String(t.method).toLowerCase() === 'tunai' || String(t.method).toLowerCase() === 'cash') {
                     totalCashInHand += (parseInt(t.total) || 0);
                 }
             }
@@ -461,13 +661,10 @@ function renderLiveMonitorShift() {
 }
 
 // ==========================================================================
-// 4. CRUD MASTER PRODUK & HPP (HP CONTROL PANEL)
+// 8. CRUD MASTER PRODUK & HPP 
 // ==========================================================================
-
-// MASUKKAN API KEY IMGBB DARI APLIKASI KASIR ANDA DI SINI:
 const IMGBB_API_KEY = "74a8a5c720111b4162e8e2d237aee552";
 
-// Fungsi untuk menampilkan preview saat file gambar dipilih
 function previewSelectedImage(event) {
     const file = event.target.files[0];
     const preview = document.getElementById('own-prod-image-preview');
@@ -482,7 +679,6 @@ function previewSelectedImage(event) {
     }
 }
 
-// Fungsi untuk mengunggah gambar ke server ImgBB dan mendapatkan URL-nya
 async function uploadImageToAPI(file) {
     const formData = new FormData();
     formData.append("image", file);
@@ -492,11 +688,8 @@ async function uploadImageToAPI(file) {
             body: formData
         });
         const data = await response.json();
-        if(data.success) {
-            return data.data.url;
-        } else {
-            throw new Error("API Menolak Upload");
-        }
+        if(data.success) return data.data.url;
+        else throw new Error("API Menolak Upload");
     } catch (error) {
         console.error("Gagal upload gambar:", error);
         return null;
@@ -514,18 +707,16 @@ async function saveProductOwner(e) {
     let imageUrl = document.getElementById('own-prod-image-url').value; 
     const imageFile = document.getElementById('own-prod-image-file').files[0]; 
 
-    // Jika ada file gambar baru yang dipilih, upload terlebih dahulu
     if (imageFile) {
         btn.innerHTML = `<i class="fa-solid fa-cloud-arrow-up animate-bounce mr-1"></i> Mengupload Foto...`;
         const uploadedUrl = await uploadImageToAPI(imageFile);
         
-        if (uploadedUrl) {
-            imageUrl = uploadedUrl; // Gunakan link hasil upload
-        } else {
-            alert("Gagal mengupload foto menu. Periksa koneksi internet atau API Key Anda.");
+        if (uploadedUrl) imageUrl = uploadedUrl; 
+        else {
+            alert("Gagal mengupload foto menu.");
             btn.disabled = false;
             btn.innerHTML = originalText;
-            return; // Hentikan penyimpanan jika gagal upload gambar
+            return; 
         }
     }
 
@@ -601,29 +792,27 @@ function editProductOwner(id) {
     document.getElementById('own-prod-category').value = p.category || 'Makanan';
     document.getElementById('own-prod-stock').value = p.stock || 0;
     
-    // Setting Gambar di Form Edit
     document.getElementById('own-prod-image-url').value = p.image || ''; 
     document.getElementById('own-prod-image-file').value = ""; 
     
     const preview = document.getElementById('own-prod-image-preview');
-    if(p.image) {
-        preview.innerHTML = `<img src="${p.image}" class="w-full h-full object-cover">`;
-    } else {
-        preview.innerHTML = `<i class="fa-solid fa-image text-gray-400"></i>`;
-    }
+    if(p.image) preview.innerHTML = `<img src="${p.image}" class="w-full h-full object-cover">`;
+    else preview.innerHTML = `<i class="fa-solid fa-image text-gray-400"></i>`;
 
     document.getElementById('btn-owner-submit-prod').innerText = "Perbarui Menu";
     document.getElementById('btn-owner-cancel-prod').classList.remove('hidden');
     
-    // Auto-scroll ke atas agar mempermudah user
     window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 async function deleteProductOwner(id) {
-    if(!confirm("Hapus produk ini secara permanen dari laci kasir?")) return;
+    if(!confirm("Hapus produk ini secara permanen?")) return;
     try {
-        await db.ref('products/' + id).remove();
-    } catch (e) { alert("Gagal menghapus."); }
+        await db.ref('products/' + id).set(null); 
+    } catch (e) { 
+        alert("Gagal menghapus produk dari Firebase."); 
+        console.error(e);
+    }
 }
 
 function resetProductFormOwner() {
@@ -631,51 +820,46 @@ function resetProductFormOwner() {
     document.getElementById('own-prod-id').value = '';
     document.getElementById('own-prod-image-url').value = ''; 
     document.getElementById('own-prod-image-file').value = ''; 
-    
     const preview = document.getElementById('own-prod-image-preview');
     if(preview) preview.innerHTML = `<i class="fa-solid fa-image text-gray-400"></i>`;
-    
     document.getElementById('btn-owner-submit-prod').innerText = "Simpan Item";
     document.getElementById('btn-owner-cancel-prod').classList.add('hidden');
 }
 
 // ==========================================================================
-// 5. SECURE REKORD: LOG VOID & ANTI CHEAT MONITOR
+// 9. MANAJEMEN PIN KASIR (PENGATURAN AKSES)
 // ==========================================================================
-function renderVoidLogs() {
-    const container = document.getElementById('list-void-logs');
-    if(!container) return;
-
-    if(globalVoidLogs.length === 0) {
-        container.innerHTML = `<div class="text-center text-gray-400 text-xs py-12 bg-white border border-gray-100 rounded-2xl shadow-sm">Tidak ada riwayat aktivitas void / kecurangan terdeteksi. Aman.</div>`;
-        return;
+async function updateCashierPin(e) {
+    e.preventDefault();
+    const nameInput = document.getElementById('config-cashier-input').value.trim().toLowerCase();
+    const pinInput = document.getElementById('config-pin-input').value;
+    const btn = document.getElementById('btn-save-pin');
+    
+    btn.innerHTML = `<i class="fa-solid fa-spinner animate-spin"></i> Menyimpan...`;
+    
+    try {
+        await db.ref('cashier_pins/' + nameInput).set(pinInput);
+        alert(`Akses untuk kasir ${nameInput.toUpperCase()} berhasil disimpan!`);
+        e.target.reset();
+    } catch (err) { 
+        alert("Gagal menyimpan akses."); 
+    } finally {
+        btn.innerHTML = `<i class="fa-solid fa-floppy-disk"></i> Simpan Akses`;
     }
-
-    let html = '';
-    globalVoidLogs.forEach(v => {
-        html += `
-            <div class="bg-white p-4 rounded-xl border border-red-100 shadow-xs flex justify-between items-center">
-                <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 bg-red-50 text-red-500 rounded-full flex items-center justify-center shrink-0">
-                        <i class="fa-solid fa-ban text-sm"></i>
-                    </div>
-                    <div>
-                        <h5 class="font-bold text-gray-800 text-xs sm:text-sm capitalize">${v.action || 'Pembatalan Item'}</h5>
-                        <p class="text-[10px] text-gray-400 mt-0.5">Waktu: ${v.date} | Oleh: <b class="text-gray-600">${v.cashier || 'Kasir'}</b></p>
-                        <p class="text-[11px] text-red-600 font-bold mt-1 bg-red-50/50 px-2 py-0.5 rounded border border-red-100/50 inline-block">${v.details || '-'}</p>
-                    </div>
-                </div>
-                <div class="text-right shrink-0">
-                    <span class="text-xs font-black text-gray-400 font-mono">#${v.trxId || '-'}</span>
-                </div>
-            </div>`;
-    });
-    container.innerHTML = html;
 }
 
-// ==========================================================================
-// SISA LOGIKA CRUD PIN & ABSENSI LAMA (DIPELIHARA & DISELARASKAN EMERALD)
-// ==========================================================================
+async function deleteCashierPin(name) {
+    if(confirm(`Hapus akses login untuk akun kasir: ${name.toUpperCase()}?`)) {
+        await db.ref('cashier_pins/' + name).set(null); 
+    }
+}
+
+function editCashierPin(name, pin) {
+    document.getElementById('config-cashier-input').value = name;
+    document.getElementById('config-pin-input').value = pin;
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
 function renderConfiguredPins(snapshot) {
     const listContainer = document.getElementById('pin-configuration-list');
     if(!listContainer) return;
@@ -701,10 +885,13 @@ function renderConfiguredPins(snapshot) {
                 </div>`;
         });
     } else {
-        listContainer.innerHTML = `<div class="text-center text-gray-400 text-xs py-8 bg-white border border-gray-100 rounded-2xl shadow-sm">Belum ada akun terdaftar.</div>`;
+        listContainer.innerHTML = `<div class="text-center text-gray-400 text-xs py-8 bg-white border border-gray-100 rounded-2xl shadow-sm">Belum ada akun kasir terdaftar.</div>`;
     }
 }
 
+// ==========================================================================
+// 10. ABSENSI (LOG & REKAP)
+// ==========================================================================
 function renderLogAbsensi() {
     const listContainer = document.getElementById('list-absensi');
     if (!listContainer) return;
@@ -828,7 +1015,40 @@ function renderRekapAbsensi() {
     container.innerHTML = html;
 }
 
-// Fungsi untuk memindah tab Pemasukan & Pengeluaran
+// ==========================================================================
+// 11. LOG VOID / ANTI CHEAT
+// ==========================================================================
+function renderVoidLogs() {
+    const container = document.getElementById('list-void-logs');
+    if(!container) return;
+
+    if(globalVoidLogs.length === 0) {
+        container.innerHTML = `<div class="text-center text-gray-400 text-xs py-12 bg-white border border-gray-100 rounded-2xl shadow-sm">Tidak ada riwayat aktivitas void / kecurangan terdeteksi. Aman.</div>`;
+        return;
+    }
+
+    let html = '';
+    globalVoidLogs.forEach(v => {
+        html += `
+            <div class="bg-white p-4 rounded-xl border border-red-100 shadow-xs flex justify-between items-center">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-red-50 text-red-500 rounded-full flex items-center justify-center shrink-0">
+                        <i class="fa-solid fa-ban text-sm"></i>
+                    </div>
+                    <div>
+                        <h5 class="font-bold text-gray-800 text-xs sm:text-sm capitalize">${v.action || 'Pembatalan Item'}</h5>
+                        <p class="text-[10px] text-gray-400 mt-0.5">Waktu: ${v.date} | Oleh: <b class="text-gray-600">${v.cashier || 'Kasir'}</b></p>
+                        <p class="text-[11px] text-red-600 font-bold mt-1 bg-red-50/50 px-2 py-0.5 rounded border border-red-100/50 inline-block">${v.details || '-'}</p>
+                    </div>
+                </div>
+                <div class="text-right shrink-0">
+                    <span class="text-xs font-black text-gray-400 font-mono">#${v.trxId || '-'}</span>
+                </div>
+            </div>`;
+    });
+    container.innerHTML = html;
+}
+
 function switchListTab(tab) {
     const btnIn = document.getElementById('btn-tab-pemasukan');
     const btnOut = document.getElementById('btn-tab-pengeluaran');

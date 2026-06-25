@@ -20,79 +20,191 @@
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
-        .glass-panel { background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(10px); }
     </style>
 </head>
 <body class="bg-[#f4f7f6] text-gray-800 font-sans h-screen overflow-hidden flex relative selection:bg-emerald-200">
 
-    <!-- SIDEBAR DESKTOP -->
+    <div id="owner-login-overlay" class="fixed inset-0 z-[100] flex items-center justify-center p-5 bg-black/60 backdrop-blur-sm transition-opacity duration-300">
+        <div class="bg-white rounded-3xl w-full max-w-sm p-8 text-center space-y-8 shadow-2xl relative overflow-hidden">
+            <div class="relative z-10 space-y-2">
+                <div class="bg-emerald-50 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4 border border-emerald-100">
+                    <i class="fa-solid fa-crown text-3xl text-emerald-600"></i>
+                </div>
+                <h2 class="text-2xl font-black text-gray-800">OWNER PANEL</h2>
+                <p class="text-sm text-gray-500 font-medium">Masukkan PIN rahasia Anda</p>
+            </div>
+            
+            <div class="text-left space-y-5 relative z-10">
+                <div>
+                    <input type="password" id="owner-login-pin" maxlength="4" inputmode="numeric" placeholder="••••" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-3xl tracking-[0.5em] text-center font-black text-emerald-700 focus:outline-emerald-500 transition">
+                </div>
+            </div>
+            <button onclick="handleOwnerLogin()" id="btn-owner-login" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-4 rounded-xl text-sm transition-all duration-300 shadow-lg shadow-emerald-200">
+                Masuk Dashboard <i class="fa-solid fa-arrow-right text-xs ml-1"></i>
+            </button>
+        </div>
+    </div>
+
+    <div id="mobile-menu-overlay" onclick="toggleMobileMenu()" class="fixed inset-0 bg-black/50 z-40 hidden backdrop-blur-sm transition-opacity"></div>
+    <div id="mobile-menu-drawer" class="fixed inset-y-0 left-0 w-64 bg-white shadow-2xl z-50 transform -translate-x-full transition-transform duration-300 flex flex-col md:hidden">
+        <div class="p-5 border-b border-gray-100 flex justify-between items-center bg-emerald-50/50">
+            <div class="font-black text-gray-800 flex items-center gap-2"><i class="fa-solid fa-crown text-emerald-600"></i> OWNER MENU</div>
+            <button onclick="toggleMobileMenu()" class="text-gray-400 hover:text-red-500 w-8 h-8 bg-white rounded-full flex items-center justify-center shadow-sm"><i class="fa-solid fa-xmark text-lg"></i></button>
+        </div>
+        <nav class="flex-1 overflow-y-auto p-4 space-y-2">
+            <button onclick="switchTab('home'); toggleMobileMenu()" id="tab-mobile-home" class="nav-btn w-full flex items-center gap-4 p-3 rounded-xl bg-emerald-600 text-white font-bold transition shadow-sm">
+                <i class="fa-solid fa-house w-5 text-center"></i> <span class="text-sm">Home Dashboard</span>
+            </button>
+            <button onclick="switchTab('keuangan'); toggleMobileMenu()" id="tab-mobile-keuangan" class="nav-btn w-full flex items-center gap-4 p-3 rounded-xl text-gray-500 hover:bg-gray-50 hover:text-emerald-600 font-semibold transition">
+                <i class="fa-solid fa-chart-line w-5 text-center"></i> <span class="text-sm">Analisis Bisnis</span>
+            </button>
+            <button onclick="switchTab('produk'); toggleMobileMenu()" id="tab-mobile-produk" class="nav-btn w-full flex items-center gap-4 p-3 rounded-xl text-gray-500 hover:bg-gray-50 hover:text-emerald-600 font-semibold transition">
+                <i class="fa-solid fa-boxes-stacked w-5 text-center"></i> <span class="text-sm">Manajemen Menu</span>
+            </button>
+            <button onclick="switchTab('pengaturan'); toggleMobileMenu()" id="tab-mobile-pengaturan" class="nav-btn w-full flex items-center gap-4 p-3 rounded-xl text-gray-500 hover:bg-gray-50 hover:text-emerald-600 font-semibold transition">
+                <i class="fa-solid fa-users-gear w-5 text-center"></i> <span class="text-sm">Akses Kasir (PIN)</span>
+            </button>
+            <button onclick="switchTab('rekapabsensi'); toggleMobileMenu()" id="tab-mobile-rekapabsensi" class="nav-btn w-full flex items-center gap-4 p-3 rounded-xl text-gray-500 hover:bg-gray-50 hover:text-emerald-600 font-semibold transition">
+                <i class="fa-solid fa-calendar-check w-5 text-center"></i> <span class="text-sm">Rekap Kehadiran</span>
+            </button>
+            <button onclick="switchTab('absensi'); toggleMobileMenu()" id="tab-mobile-absensi" class="nav-btn w-full flex items-center gap-4 p-3 rounded-xl text-gray-500 hover:bg-gray-50 hover:text-emerald-600 font-semibold transition">
+                <i class="fa-solid fa-list-check w-5 text-center"></i> <span class="text-sm">Riwayat Absen</span>
+            </button>
+            <button onclick="switchTab('void'); toggleMobileMenu()" id="tab-mobile-void" class="nav-btn w-full flex items-center gap-4 p-3 rounded-xl text-gray-500 hover:bg-gray-50 hover:text-emerald-600 font-semibold transition">
+                <i class="fa-solid fa-triangle-exclamation w-5 text-center"></i> <span class="text-sm">Log Void / Hapus</span>
+            </button>
+            <button onclick="switchTab('sistem'); toggleMobileMenu()" id="tab-mobile-sistem" class="nav-btn w-full flex items-center gap-4 p-3 rounded-xl text-gray-500 hover:bg-gray-50 hover:text-emerald-600 font-semibold transition">
+                <i class="fa-solid fa-gears w-5 text-center"></i> <span class="text-sm">Pengaturan Owner</span>
+            </button>
+        </nav>
+        <div class="p-4 border-t border-gray-100">
+            <button onclick="logoutOwner()" class="w-full bg-red-50 hover:bg-red-100 text-red-600 font-bold py-3 rounded-xl text-sm transition flex justify-center items-center gap-2">
+                <i class="fa-solid fa-arrow-right-from-bracket"></i> Keluar
+            </button>
+        </div>
+    </div>
+
     <aside class="w-64 bg-white border-r border-gray-100 flex flex-col justify-between hidden md:flex z-20 shadow-[4px_0_24px_rgba(0,0,0,0.02)] transition-all duration-300">
-        <div class="p-6">
-            <div class="flex items-center gap-3 mb-10 overflow-hidden">
+        <div class="p-6 flex-1 flex flex-col overflow-hidden">
+            <div class="flex items-center gap-3 mb-8 shrink-0">
                 <div class="w-10 h-10 bg-emerald-50 rounded-full flex items-center justify-center text-emerald-600 border border-emerald-100 shrink-0">
                     <i class="fa-solid fa-crown"></i>
                 </div>
                 <h1 class="nav-text text-lg font-black tracking-tight text-gray-800 whitespace-nowrap">OWNER PANEL</h1>
             </div>
-            <nav class="space-y-1.5 overflow-y-auto no-scrollbar max-h-[calc(100vh-220px)]">
-                <button onclick="switchTab('keuangan')" id="tab-desktop-keuangan" class="nav-btn w-full flex items-center gap-4 p-3.5 rounded-2xl bg-emerald-600 text-white font-bold transition shadow-md shadow-emerald-200/50">
-                    <i class="fa-solid fa-chart-line text-lg w-5 text-center shrink-0"></i> <span class="nav-text text-sm whitespace-nowrap">Analisis Bisnis</span>
+            <nav class="space-y-1.5 overflow-y-auto no-scrollbar flex-1 pb-4">
+                <button onclick="switchTab('home')" id="tab-desktop-home" class="nav-btn w-full flex items-center gap-4 p-3.5 rounded-2xl bg-emerald-600 text-white font-bold transition shadow-md shadow-emerald-200/50">
+                    <i class="fa-solid fa-house w-5 text-center shrink-0"></i> <span class="nav-text text-sm whitespace-nowrap">Home Dashboard</span>
+                </button>
+                <button onclick="switchTab('keuangan')" id="tab-desktop-keuangan" class="nav-btn w-full flex items-center gap-4 p-3.5 rounded-2xl text-gray-500 hover:bg-gray-50 hover:text-emerald-600 font-semibold transition">
+                    <i class="fa-solid fa-chart-line w-5 text-center shrink-0"></i> <span class="nav-text text-sm whitespace-nowrap">Analisis Bisnis</span>
                 </button>
                 <button onclick="switchTab('produk')" id="tab-desktop-produk" class="nav-btn w-full flex items-center gap-4 p-3.5 rounded-2xl text-gray-500 hover:bg-gray-50 hover:text-emerald-600 font-semibold transition">
-                    <i class="fa-solid fa-boxes-stacked text-lg w-5 text-center shrink-0"></i> <span class="nav-text text-sm whitespace-nowrap">Manajemen Menu</span>
+                    <i class="fa-solid fa-boxes-stacked w-5 text-center shrink-0"></i> <span class="nav-text text-sm whitespace-nowrap">Manajemen Menu</span>
                 </button>
                 <button onclick="switchTab('pengaturan')" id="tab-desktop-pengaturan" class="nav-btn w-full flex items-center gap-4 p-3.5 rounded-2xl text-gray-500 hover:bg-gray-50 hover:text-emerald-600 font-semibold transition">
-                    <i class="fa-solid fa-users-gear text-lg w-5 text-center shrink-0"></i> <span class="nav-text text-sm whitespace-nowrap">Akses Kasir (PIN)</span>
+                    <i class="fa-solid fa-users-gear w-5 text-center shrink-0"></i> <span class="nav-text text-sm whitespace-nowrap">Akses Kasir (PIN)</span>
                 </button>
                 <button onclick="switchTab('rekapabsensi')" id="tab-desktop-rekapabsensi" class="nav-btn w-full flex items-center gap-4 p-3.5 rounded-2xl text-gray-500 hover:bg-gray-50 hover:text-emerald-600 font-semibold transition">
-                    <i class="fa-solid fa-calendar-check text-lg w-5 text-center shrink-0"></i> <span class="nav-text text-sm whitespace-nowrap">Rekap Kehadiran</span>
+                    <i class="fa-solid fa-calendar-check w-5 text-center shrink-0"></i> <span class="nav-text text-sm whitespace-nowrap">Rekap Kehadiran</span>
                 </button>
                 <button onclick="switchTab('absensi')" id="tab-desktop-absensi" class="nav-btn w-full flex items-center gap-4 p-3.5 rounded-2xl text-gray-500 hover:bg-gray-50 hover:text-emerald-600 font-semibold transition">
-                    <i class="fa-solid fa-list-check text-lg w-5 text-center shrink-0"></i> <span class="nav-text text-sm whitespace-nowrap">Riwayat Absen</span>
+                    <i class="fa-solid fa-list-check w-5 text-center shrink-0"></i> <span class="nav-text text-sm whitespace-nowrap">Riwayat Absen</span>
                 </button>
                 <button onclick="switchTab('void')" id="tab-desktop-void" class="nav-btn w-full flex items-center gap-4 p-3.5 rounded-2xl text-gray-500 hover:bg-gray-50 hover:text-emerald-600 font-semibold transition">
-                    <i class="fa-solid fa-triangle-exclamation text-lg w-5 text-center shrink-0"></i> <span class="nav-text text-sm whitespace-nowrap">Log Void / Hapus</span>
+                    <i class="fa-solid fa-triangle-exclamation w-5 text-center shrink-0"></i> <span class="nav-text text-sm whitespace-nowrap">Log Void / Hapus</span>
+                </button>
+                <button onclick="switchTab('sistem')" id="tab-desktop-sistem" class="nav-btn w-full flex items-center gap-4 p-3.5 rounded-2xl text-gray-500 hover:bg-gray-50 hover:text-emerald-600 font-semibold transition">
+                    <i class="fa-solid fa-gears w-5 text-center shrink-0"></i> <span class="nav-text text-sm whitespace-nowrap">Pengaturan Owner</span>
                 </button>
             </nav>
         </div>
         
-        <div class="p-6 border-t border-gray-100 overflow-hidden">
-            <div class="flex items-center gap-3">
-                <div class="w-10 h-10 bg-gray-100 text-gray-600 rounded-full flex items-center justify-center font-bold text-sm shrink-0">
-                    <i class="fa-solid fa-user-tie"></i>
-                </div>
-                <div class="nav-text truncate">
-                    <p class="text-sm font-bold text-gray-800 truncate">Administrator</p>
-                    <p class="text-[10px] text-emerald-600 font-bold">Akses Penuh</p>
-                </div>
-            </div>
+        <div class="p-6 border-t border-gray-100 shrink-0">
+            <button onclick="logoutOwner()" class="w-full flex items-center justify-center lg:justify-start gap-3 p-3 rounded-xl text-gray-500 hover:bg-red-50 hover:text-red-600 font-bold transition">
+                <i class="fa-solid fa-arrow-right-from-bracket text-lg w-5 text-center shrink-0"></i> 
+                <span class="nav-text text-sm whitespace-nowrap">Keluar Sesi</span>
+            </button>
         </div>
     </aside>
 
-    <!-- AREA KONTEN UTAMA -->
     <main class="flex-1 flex flex-col min-w-0 bg-[#f4f7f6] overflow-hidden">
         
-        <!-- HEADER MOBILE -->
-        <header class="bg-white p-4 flex justify-between items-center md:hidden shadow-sm z-20 sticky top-0">
-            <div class="flex items-center gap-2 font-black text-gray-800">
-                <i class="fa-solid fa-crown text-emerald-600"></i> OWNER PANEL
+        <header class="bg-white p-4 flex justify-between items-center md:hidden shadow-sm z-20 sticky top-0 border-b border-gray-100">
+            <div class="flex items-center gap-3">
+                <button onclick="toggleMobileMenu()" class="text-gray-600 hover:text-emerald-600 transition w-8 h-8 flex items-center justify-center bg-gray-50 rounded-lg">
+                    <i class="fa-solid fa-bars text-lg"></i>
+                </button>
+                <div class="font-black text-gray-800 flex items-center gap-2">
+                    <i class="fa-solid fa-crown text-emerald-600"></i> OWNER
+                </div>
             </div>
+            <button onclick="logoutOwner()" class="w-8 h-8 rounded-full bg-red-50 text-red-500 flex items-center justify-center shadow-sm">
+                <i class="fa-solid fa-power-off text-xs"></i>
+            </button>
         </header>
 
-        <!-- KONTAINER SCROLL HALAMAN -->
-        <div class="flex-1 overflow-y-auto p-4 lg:p-6 pb-[100px] lg:pb-6 max-w-6xl mx-auto w-full">
+        <div class="flex-1 overflow-y-auto p-4 lg:p-6 pb-6 lg:pb-6 max-w-6xl mx-auto w-full">
             
-            <!-- PANEL KEUANGAN & ANALISIS -->
-            <section id="panel-keuangan" class="space-y-4">
-                
-                <!-- Filter Jangka Waktu -->
+            <section id="panel-home" class="space-y-5">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="bg-gradient-to-br from-emerald-500 to-emerald-700 rounded-2xl p-6 shadow-lg text-white relative overflow-hidden">
+                        <i class="fa-solid fa-sack-dollar absolute -right-4 -bottom-6 text-7xl text-white/20"></i>
+                        <p class="text-xs font-bold text-emerald-100 uppercase tracking-wider mb-2">Penjualan Kotor Hari Ini</p>
+                        <h3 id="home-total-sales" class="text-3xl font-black">Rp 0</h3>
+                        <p class="text-[10px] text-emerald-100 mt-2 flex items-center gap-1"><i class="fa-solid fa-clock-rotate-left"></i> Diperbarui Real-time</p>
+                    </div>
+                    <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 relative overflow-hidden">
+                        <i class="fa-solid fa-users absolute -right-4 -bottom-6 text-7xl text-gray-50"></i>
+                        <p class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Kasir Aktif Hari Ini</p>
+                        <h3 id="home-active-cashiers" class="text-3xl font-black text-gray-800">0 <span class="text-sm text-gray-500 font-bold ml-1">Orang</span></h3>
+                        <p class="text-[10px] text-gray-400 mt-2 flex items-center gap-1"><i class="fa-solid fa-desktop"></i> Sedang membuka laci kasir</p>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
+                    <h3 class="text-sm font-bold text-gray-800 mb-4 border-b border-gray-50 pb-2">Menu Utama Owner</h3>
+                    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 md:gap-4">
+                        <button onclick="switchTab('keuangan')" class="bg-gray-50 p-4 rounded-xl border border-gray-100 shadow-xs hover:bg-emerald-50 hover:border-emerald-200 transition flex flex-col items-center justify-center gap-3 group">
+                            <div class="w-12 h-12 rounded-full bg-white text-emerald-600 flex items-center justify-center text-xl shadow-sm group-hover:scale-110 transition"><i class="fa-solid fa-chart-line"></i></div>
+                            <span class="text-xs font-bold text-gray-700 text-center">Analisis<br>Keuangan</span>
+                        </button>
+                        <button onclick="switchTab('produk')" class="bg-gray-50 p-4 rounded-xl border border-gray-100 shadow-xs hover:bg-emerald-50 hover:border-emerald-200 transition flex flex-col items-center justify-center gap-3 group">
+                            <div class="w-12 h-12 rounded-full bg-white text-emerald-600 flex items-center justify-center text-xl shadow-sm group-hover:scale-110 transition"><i class="fa-solid fa-boxes-stacked"></i></div>
+                            <span class="text-xs font-bold text-gray-700 text-center">Katalog<br>Menu</span>
+                        </button>
+                        <button onclick="switchTab('pengaturan')" class="bg-gray-50 p-4 rounded-xl border border-gray-100 shadow-xs hover:bg-emerald-50 hover:border-emerald-200 transition flex flex-col items-center justify-center gap-3 group">
+                            <div class="w-12 h-12 rounded-full bg-white text-emerald-600 flex items-center justify-center text-xl shadow-sm group-hover:scale-110 transition"><i class="fa-solid fa-users-gear"></i></div>
+                            <span class="text-xs font-bold text-gray-700 text-center">Akses<br>Kasir</span>
+                        </button>
+                        <button onclick="switchTab('rekapabsensi')" class="bg-gray-50 p-4 rounded-xl border border-gray-100 shadow-xs hover:bg-emerald-50 hover:border-emerald-200 transition flex flex-col items-center justify-center gap-3 group">
+                            <div class="w-12 h-12 rounded-full bg-white text-emerald-600 flex items-center justify-center text-xl shadow-sm group-hover:scale-110 transition"><i class="fa-solid fa-calendar-check"></i></div>
+                            <span class="text-xs font-bold text-gray-700 text-center">Rekap<br>Kehadiran</span>
+                        </button>
+                        <button onclick="switchTab('absensi')" class="bg-gray-50 p-4 rounded-xl border border-gray-100 shadow-xs hover:bg-emerald-50 hover:border-emerald-200 transition flex flex-col items-center justify-center gap-3 group">
+                            <div class="w-12 h-12 rounded-full bg-white text-emerald-600 flex items-center justify-center text-xl shadow-sm group-hover:scale-110 transition"><i class="fa-solid fa-list-check"></i></div>
+                            <span class="text-xs font-bold text-gray-700 text-center">Log<br>Absensi</span>
+                        </button>
+                        <button onclick="switchTab('void')" class="bg-gray-50 p-4 rounded-xl border border-gray-100 shadow-xs hover:bg-emerald-50 hover:border-emerald-200 transition flex flex-col items-center justify-center gap-3 group">
+                            <div class="w-12 h-12 rounded-full bg-white text-emerald-600 flex items-center justify-center text-xl shadow-sm group-hover:scale-110 transition"><i class="fa-solid fa-shield-virus"></i></div>
+                            <span class="text-xs font-bold text-gray-700 text-center">Anti<br>Cheat</span>
+                        </button>
+                        <button onclick="switchTab('sistem')" class="bg-gray-50 p-4 rounded-xl border border-gray-100 shadow-xs hover:bg-emerald-50 hover:border-emerald-200 transition flex flex-col items-center justify-center gap-3 group">
+                            <div class="w-12 h-12 rounded-full bg-white text-emerald-600 flex items-center justify-center text-xl shadow-sm group-hover:scale-110 transition"><i class="fa-solid fa-gears"></i></div>
+                            <span class="text-xs font-bold text-gray-700 text-center">Pengaturan<br>Sistem</span>
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <section id="panel-keuangan" class="hidden space-y-4">
                 <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 flex flex-col xl:flex-row justify-between xl:items-center gap-4">
                     <div class="flex flex-col sm:flex-row sm:items-center gap-3">
                         <span class="text-[11px] font-bold text-gray-500 uppercase tracking-widest hidden sm:inline-block"><i class="fa-solid fa-filter text-emerald-600 mr-1"></i> Saring:</span>
                         <div class="grid grid-cols-4 sm:flex gap-2">
-                            <button onclick="setOwnerFinanceFilter('hari')" id="btn-flt-hari" class="flt-btn px-3 py-2 text-xs font-bold rounded-xl border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 transition">Hari Ini</button>
+                            <button onclick="setOwnerFinanceFilter('hari')" id="btn-flt-hari" class="flt-btn px-3 py-2 text-xs font-bold rounded-xl border border-emerald-600 bg-emerald-600 text-white transition shadow-sm">Hari Ini</button>
                             <button onclick="setOwnerFinanceFilter('bulan')" id="btn-flt-bulan" class="flt-btn px-3 py-2 text-xs font-bold rounded-xl border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 transition">Bulan Ini</button>
-                            <button onclick="setOwnerFinanceFilter('semua')" id="btn-flt-semua" class="flt-btn px-3 py-2 text-xs font-bold rounded-xl border border-emerald-600 bg-emerald-600 text-white transition shadow-sm">Semua</button>
+                            <button onclick="setOwnerFinanceFilter('semua')" id="btn-flt-semua" class="flt-btn px-3 py-2 text-xs font-bold rounded-xl border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 transition">Semua</button>
                             <button onclick="setOwnerFinanceFilter('kustom')" id="btn-flt-kustom" class="flt-btn px-3 py-2 text-xs font-bold rounded-xl border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 transition">Kustom</button>
                         </div>
                         <div id="kustom-date-inputs" class="hidden flex items-center gap-2 bg-gray-50 p-1.5 rounded-xl border border-gray-200 w-max mt-2 sm:mt-0">
@@ -101,27 +213,14 @@
                             <input type="date" id="flt-end" onchange="renderKeuangan()" class="bg-transparent px-2 py-1 text-xs focus:outline-none text-gray-700 font-bold">
                         </div>
                     </div>
-                    
-                    <div class="flex gap-2 shrink-0 border-t sm:border-t-0 pt-4 sm:pt-0 border-gray-100">
-                         <button onclick="exportExcelOwner()" class="flex-1 sm:flex-none bg-emerald-50 hover:bg-emerald-600 text-emerald-700 hover:text-white px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 border border-emerald-100">
-                            <i class="fa-solid fa-file-excel"></i> Export Excel
-                         </button>
-                         <button onclick="deleteAllTransactions()" class="flex-1 sm:flex-none bg-red-50 hover:bg-red-500 text-red-600 hover:text-white px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 border border-red-100">
-                            <i class="fa-solid fa-trash-can"></i> Bersihkan
-                         </button>
-                    </div>
                 </div>
 
-                <!-- Live Monitor Shift Atas -->
                 <div class="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
                     <h3 class="text-xs font-bold text-gray-500 uppercase tracking-widest mb-3 flex items-center gap-2">
                         <i class="fa-solid fa-circle text-red-500 text-[8px] animate-pulse"></i> Monitoring Kasir Aktif Saat Ini
                     </h3>
-                    <div id="live-cashier-container" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-                        <!-- Diisi via JS -->
-                    </div>
+                    <div id="live-cashier-container" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3"></div>
                 </div>
-                <!-- Metode Pembayaran Sumber Dana -->
                 <div class="grid grid-cols-3 gap-4">
                     <div class="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm text-center">
                         <p class="text-[10px] font-bold text-gray-400 uppercase mb-1">Tunai / Cash</p>
@@ -136,78 +235,74 @@
                         <h3 id="rep-debit-txt" class="text-sm md:text-lg font-black text-gray-800">Rp 0</h3>
                     </div>
                 </div>
-                <!-- Ringkasan Angka Analisis Keuntungan -->
+                <!-- Ringkasan Angka Analisis Keuntungan dengan Keterangan -->
 <div class="grid grid-cols-2 lg:grid-cols-5 gap-4">
+    <!-- Card Omset Kotor -->
     <div class="bg-white rounded-2xl p-4 sm:p-5 shadow-sm border border-gray-100 relative overflow-hidden">
         <p class="text-[9px] sm:text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1 relative z-10">Omset Kotor</p>
         <h3 id="owner-total-gross" class="text-xl sm:text-2xl font-black text-gray-700 relative z-10">Rp 0</h3>
+        <p class="text-[9px] text-gray-400 mt-1 italic">Total penjualan sebelum diskon</p>
     </div>
     
+    <!-- Card Total Diskon -->
     <div class="bg-white rounded-2xl p-4 sm:p-5 shadow-sm border border-gray-100 relative overflow-hidden">
         <p class="text-[9px] sm:text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1 relative z-10">Total Diskon</p>
         <h3 id="owner-total-diskon" class="text-xl sm:text-2xl font-black text-red-500 relative z-10">Rp 0</h3>
+        <p class="text-[9px] text-gray-400 mt-1 italic">Potongan harga untuk pelanggan</p>
     </div>
 
+    <!-- Card Omset Bersih -->
     <div class="bg-white rounded-2xl p-4 sm:p-5 shadow-sm border border-gray-100 relative overflow-hidden">
         <div class="absolute right-0 top-0 w-24 h-24 bg-emerald-50 rounded-bl-full -z-0"></div>
         <p class="text-[9px] sm:text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1 relative z-10">Omset Bersih</p>
         <h3 id="owner-total-omset" class="text-xl sm:text-2xl font-black text-emerald-700 relative z-10">Rp 0</h3>
+        <p class="text-[9px] text-gray-400 mt-1 italic">Uang yang diterima kasir</p>
     </div>
 
+    <!-- Card Pengeluaran -->
     <div class="bg-white rounded-2xl p-4 sm:p-5 shadow-sm border border-gray-100 relative overflow-hidden">
         <div class="absolute right-0 top-0 w-24 h-24 bg-orange-50 rounded-bl-full -z-0"></div>
         <p class="text-[9px] sm:text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1 relative z-10">Pengeluaran Operasional</p>
         <h3 id="owner-total-expense" class="text-xl sm:text-2xl font-black text-orange-600 relative z-10">Rp 0</h3>
+        <p class="text-[9px] text-gray-400 mt-1 italic">Belanja stok/operasional kasir</p>
     </div>
 
+    <!-- Card Keuntungan Bersih -->
     <div class="bg-white rounded-2xl p-4 sm:p-5 shadow-sm border border-gray-100 relative overflow-hidden col-span-2 lg:col-span-1">
         <div class="absolute right-0 top-0 w-24 h-24 bg-teal-50 rounded-bl-full -z-0"></div>
         <p class="text-[9px] sm:text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1 relative z-10">Keuntungan Bersih</p>
         <h3 id="owner-total-profit" class="text-xl sm:text-2xl font-black text-teal-700 relative z-10">Rp 0</h3>
+        <p class="text-[9px] text-gray-400 mt-1 italic">Omset bersih - HPP - Biaya keluar</p>
     </div>
 </div>
 
-                <!-- Bagian Grafik Dua Kolom (Tren Omset & Menu Terlaris) -->
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
                     <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 lg:col-span-2">
                         <h2 class="text-sm font-bold text-gray-800 mb-4"><i class="fa-solid fa-chart-area mr-2 text-emerald-600"></i>Grafik Tren Pendapatan</h2>
-                        <div class="relative h-[250px] w-full">
-                            <canvas id="financeChart"></canvas>
-                        </div>
+                        <div class="relative h-[250px] w-full"><canvas id="financeChart"></canvas></div>
                     </div>
                     <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
                         <h2 class="text-sm font-bold text-gray-800 mb-4"><i class="fa-solid fa-fire mr-2 text-orange-500"></i>5 Menu Paling Laris</h2>
-                        <div id="top-products-list" class="space-y-3.5 pt-2">
-                            <!-- Diisi via JS -->
-                        </div>
+                        <div id="top-products-list" class="space-y-3.5 pt-2"></div>
                     </div>
                 </div>
 
-
-
                 <div class="flex items-center justify-between mt-4 px-1 mb-3">
-    <h2 class="text-xs font-bold text-gray-500 uppercase tracking-widest flex items-center gap-2">
-        <i class="fa-solid fa-list-check text-sage-500"></i> Riwayat Transaksi
-    </h2>
-    <div class="flex bg-gray-100 p-1 rounded-lg border border-gray-200">
-        <button onclick="switchListTab('pemasukan')" id="btn-tab-pemasukan" class="px-3 py-1.5 text-[10px] font-bold rounded-md bg-white text-emerald-600 shadow-sm transition">Pemasukan</button>
-        <button onclick="switchListTab('pengeluaran')" id="btn-tab-pengeluaran" class="px-3 py-1.5 text-[10px] font-bold rounded-md text-gray-400 hover:text-orange-500 transition">Pengeluaran</button>
-    </div>
-</div>
+                    <h2 class="text-xs font-bold text-gray-500 uppercase tracking-widest flex items-center gap-2">
+                        <i class="fa-solid fa-list-check text-emerald-500"></i> Riwayat Mutasi
+                    </h2>
+                    <div class="flex bg-gray-100 p-1 rounded-lg border border-gray-200">
+                        <button onclick="switchListTab('pemasukan')" id="btn-tab-pemasukan" class="px-3 py-1.5 text-[10px] font-bold rounded-md bg-white text-emerald-600 shadow-sm transition">Pemasukan</button>
+                        <button onclick="switchListTab('pengeluaran')" id="btn-tab-pengeluaran" class="px-3 py-1.5 text-[10px] font-bold rounded-md text-gray-400 hover:text-orange-500 transition">Pengeluaran</button>
+                    </div>
+                </div>
 
-<div id="list-pemasukan" class="space-y-3 pb-4 max-h-[500px] overflow-y-auto hide-scroll pr-1">
-    <div class="text-center text-gray-400 text-xs py-8 bg-white border border-sage-100 rounded-2xl shadow-sm">Memuat data transaksi masuk...</div>
-</div>
-
-<div id="list-pengeluaran" class="hidden space-y-3 pb-4 max-h-[500px] overflow-y-auto hide-scroll pr-1">
-    <div class="text-center text-gray-400 text-xs py-8 bg-white border border-sage-100 rounded-2xl shadow-sm">Memuat data pengeluaran...</div>
-</div>
+                <div id="list-pemasukan" class="space-y-3 pb-4 max-h-[500px] overflow-y-auto hide-scroll pr-1"></div>
+                <div id="list-pengeluaran" class="hidden space-y-3 pb-4 max-h-[500px] overflow-y-auto hide-scroll pr-1"></div>
             </section>
 
-            <!-- PANEL MANAJEMEN MENU & HARGA MODAL -->
             <section id="panel-produk" class="hidden space-y-4">
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
-                    <!-- Form Input Owner -->
                     <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 self-start md:col-span-1">
                         <h3 class="text-base font-bold text-gray-800 mb-4 border-b border-gray-100 pb-3"><i class="fa-solid fa-plus-circle mr-2 text-emerald-600"></i>Atur Produk & Modal</h3>
                         <form id="owner-product-form" onsubmit="saveProductOwner(event)" class="space-y-3.5">
@@ -241,17 +336,17 @@
                                 </div>
                             </div>
                             <div>
-    <label class="block text-xs font-bold text-gray-500 mb-1">Foto Menu (Upload dari Perangkat)</label>
-    <div class="flex items-center gap-3">
-        <div id="own-prod-image-preview" class="w-14 h-14 rounded-xl bg-gray-100 border border-gray-200 flex items-center justify-center shrink-0 overflow-hidden shadow-inner">
-            <i class="fa-solid fa-image text-gray-400"></i>
-        </div>
-        <div class="flex-1">
-            <input type="file" id="own-prod-image-file" accept="image/*" onchange="previewSelectedImage(event)" class="w-full text-sm text-gray-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 transition focus:outline-none cursor-pointer">
-            <input type="hidden" id="own-prod-image-url">
-        </div>
-    </div>
-</div>
+                                <label class="block text-xs font-bold text-gray-500 mb-1">Foto Menu</label>
+                                <div class="flex items-center gap-3">
+                                    <div id="own-prod-image-preview" class="w-14 h-14 rounded-xl bg-gray-100 border border-gray-200 flex items-center justify-center shrink-0 overflow-hidden shadow-inner">
+                                        <i class="fa-solid fa-image text-gray-400"></i>
+                                    </div>
+                                    <div class="flex-1">
+                                        <input type="file" id="own-prod-image-file" accept="image/*" onchange="previewSelectedImage(event)" class="w-full text-sm text-gray-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 transition focus:outline-none cursor-pointer">
+                                        <input type="hidden" id="own-prod-image-url">
+                                    </div>
+                                </div>
+                            </div>
                             <div class="flex gap-2 pt-1">
                                 <button type="submit" id="btn-owner-submit-prod" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3.5 rounded-xl text-sm shadow-md transition">Simpan Item</button>
                                 <button type="button" id="btn-owner-cancel-prod" onclick="resetProductFormOwner()" class="hidden bg-gray-100 text-gray-600 px-4 py-3.5 rounded-xl text-sm font-bold">Batal</button>
@@ -259,17 +354,13 @@
                         </form>
                     </div>
 
-                    <!-- List Katalog -->
                     <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 md:col-span-2">
                         <h3 class="text-base font-bold text-gray-800 mb-4 border-b border-gray-100 pb-3"><i class="fa-solid fa-layer-group mr-2 text-emerald-600"></i>Katalog Menu & Margin Margin</h3>
-                        <div id="owner-product-grid" class="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[500px] overflow-y-auto pr-1">
-                            <!-- Diisi via JS -->
-                        </div>
+                        <div id="owner-product-grid" class="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[500px] overflow-y-auto pr-1"></div>
                     </div>
                 </div>
             </section>
 
-            <!-- PANEL PENGATURAN KASIR -->
             <section id="panel-pengaturan" class="hidden space-y-4">
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
                     <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 self-start">
@@ -291,77 +382,111 @@
                     
                     <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex flex-col">
                         <h3 class="text-base font-bold text-gray-800 mb-4 border-b border-gray-100 pb-3"><i class="fa-solid fa-shield-halved mr-2 text-emerald-600"></i>Daftar Akun Terdaftar</h3>
-                        <div id="pin-configuration-list" class="space-y-3">
-                            <div class="text-center text-gray-400 text-xs py-8">Memuat data kasir...</div>
-                        </div>
+                        <div id="pin-configuration-list" class="space-y-3"></div>
                     </div>
                 </div>
             </section>
 
-            <!-- PANEL REKAP ABSENSI -->
             <section id="panel-rekapabsensi" class="hidden space-y-4">
                 <div class="bg-white border border-gray-100 rounded-2xl p-5 flex flex-col sm:flex-row justify-between sm:items-center gap-4 shadow-sm">
                     <div>
                         <h2 class="text-base font-bold text-gray-800"><i class="fa-solid fa-calendar-check mr-2 text-emerald-600"></i>Filter Bulan Rekap</h2>
-                        <p class="text-[11px] text-gray-500 mt-1 font-medium">Pantau jumlah kehadiran dan hari bolong per bulan</p>
+                        <p class="text-[11px] text-gray-500 mt-1 font-medium">Pantau jumlah kehadiran per bulan</p>
                     </div>
                     <div class="flex items-center gap-2 w-full sm:w-auto">
                         <input type="month" id="filter-bulan-rekap" class="w-full sm:w-auto border border-gray-200 text-gray-800 font-bold text-sm rounded-xl px-4 py-3 bg-gray-50 focus:outline-emerald-500">
                     </div>
                 </div>
-
-                <div id="list-rekapabsensi" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    <div class="text-center text-gray-400 text-xs py-8 bg-white border border-gray-100 rounded-2xl shadow-sm col-span-full">Memuat rekapitulasi kehadiran...</div>
-                </div>
+                <div id="list-rekapabsensi" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
             </section>
 
-            <!-- PANEL RIWAYAT ABSENSI -->
             <section id="panel-absensi" class="hidden space-y-4">
                 <h2 class="text-base font-bold text-gray-800 mb-2 px-1"><i class="fa-solid fa-list-ol mr-2 text-emerald-600"></i>Riwayat Mutasi Kehadiran</h2>
-                <div id="list-absensi" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    <div class="text-center text-gray-400 text-xs py-8 bg-white border border-gray-100 rounded-2xl shadow-sm col-span-full">Memuat log kehadiran...</div>
-                </div>
+                <div id="list-absensi" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
             </section>
 
-            <!-- PANEL VOID / LOG MONITOR TRANSAKSI DICURIGAI -->
             <section id="panel-void" class="hidden space-y-4">
                 <div class="bg-red-50 text-red-700 p-4 rounded-xl border border-red-100 flex items-start gap-3">
                     <i class="fa-solid fa-shield-virus text-lg mt-0.5"></i>
                     <div>
                         <h4 class="font-bold text-sm">Sistem Proteksi Kasir Aktif</h4>
-                        <p class="text-xs text-red-600/90 mt-0.5">Halaman ini memantau aktivitas penghapusan transaksi atau pembersihan laci pesanan manual yang dilaporkan oleh sistem.</p>
+                        <p class="text-xs text-red-600/90 mt-0.5">Halaman ini memantau aktivitas penghapusan transaksi / keranjang kasir.</p>
                     </div>
                 </div>
-                <div id="list-void-logs" class="space-y-3">
-                    <div class="text-center text-gray-400 text-xs py-12 bg-white border border-gray-100 rounded-2xl shadow-sm">Tidak ada riwayat aktivitas void / kecurangan terdeteksi. Aman.</div>
+                <div id="list-void-logs" class="space-y-3"></div>
+            </section>
+
+            <section id="panel-sistem" class="hidden space-y-4">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+                    
+                    <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 self-start">
+                        <h3 class="text-base font-bold text-gray-800 mb-4 border-b border-gray-100 pb-3"><i class="fa-solid fa-key mr-2 text-emerald-600"></i>Ubah PIN Keamanan Owner</h3>
+                        <form onsubmit="changeOwnerPin(event)" class="space-y-4">
+                            <div>
+                                <label class="block text-xs font-bold text-gray-500 mb-1.5 ml-1">PIN Lama</label>
+                                <input type="password" id="config-owner-old-pin" required maxlength="4" inputmode="numeric" placeholder="••••" class="w-full border border-gray-200 rounded-xl px-4 py-3 text-center text-2xl tracking-[1em] font-black bg-gray-50 focus:outline-emerald-500 transition-colors">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-gray-500 mb-1.5 ml-1">PIN Baru (4 Angka)</label>
+                                <input type="password" id="config-owner-new-pin" required maxlength="4" inputmode="numeric" placeholder="••••" class="w-full border border-emerald-200 rounded-xl px-4 py-3 text-center text-2xl tracking-[1em] font-black bg-emerald-50 focus:outline-emerald-500 transition-colors">
+                            </div>
+                            <button type="submit" id="btn-save-owner-pin" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3.5 rounded-xl text-sm transition-colors shadow-md flex justify-center items-center gap-2">
+                                <i class="fa-solid fa-floppy-disk"></i> Perbarui PIN Owner
+                            </button>
+                        </form>
+                    </div>
+
+                    <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 self-start">
+                        <h3 class="text-base font-bold text-gray-800 mb-4 border-b border-gray-100 pb-3"><i class="fa-solid fa-database mr-2 text-blue-600"></i>Manajemen Database (Cloud)</h3>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-xs font-bold text-gray-500 mb-1.5 ml-1">Pilih Kategori Data Base</label>
+                                <select id="db-node-select" class="w-full border border-gray-200 rounded-xl px-4 py-3.5 text-sm font-bold bg-gray-50 focus:outline-blue-500 transition-colors">
+                                    <option value="transactions">Riwayat Transaksi Masuk (Pemasukan)</option>
+                                    <option value="expenses">Riwayat Pengeluaran Operasional</option>
+                                    <option value="products">Katalog Menu & Stok Produk</option>
+                                    <option value="attendance">Log & Rekap Absensi Kasir</option>
+                                    <option value="customers">Data Member / Pelanggan Setia</option>
+                                    <option value="void_logs">Log Void / Aktivitas Kecurangan</option>
+                                </select>
+                            </div>
+                            
+                            <div class="flex flex-col sm:flex-row gap-3 pt-2">
+                                <button onclick="backupDatabaseNode()" class="flex-1 bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white font-bold py-3.5 rounded-xl text-sm transition-colors shadow-sm flex items-center justify-center gap-2 border border-blue-100">
+                                    <i class="fa-solid fa-file-excel"></i> Download Backup
+                                </button>
+                                <button onclick="deleteDatabaseNode()" class="flex-1 bg-red-50 text-red-500 hover:bg-red-600 hover:text-white font-bold py-3.5 rounded-xl text-sm transition-colors shadow-sm flex items-center justify-center gap-2 border border-red-100">
+                                    <i class="fa-solid fa-trash-can"></i> Hapus Database
+                                </button>
+                            </div>
+                            
+                            <div class="bg-amber-50 p-3 rounded-xl border border-amber-100">
+                                <p class="text-[10px] text-amber-800 leading-relaxed font-medium">
+                                    <b><i class="fa-solid fa-triangle-exclamation"></i> Peringatan:</b> Tindakan menghapus database bersifat permanen dan tidak dapat dibatalkan. Pastikan Anda sudah mengunduh file backup (Excel) sebelum melakukan penghapusan untuk mengosongkan memori aplikasi.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
                 </div>
             </section>
 
         </div>
     </main>
 
-    <!-- NAVBAR MOBILE DI BAWAH -->
-    <nav class="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 flex justify-between px-2 py-1 z-50 pb-safe shadow-[0_-10px_20px_rgba(0,0,0,0.05)] overflow-x-auto no-scrollbar">
-        <button onclick="switchTab('keuangan')" id="tab-mobile-keuangan" class="flex-1 min-w-[70px] flex flex-col items-center justify-center p-2 text-emerald-600 font-bold transition">
-            <i class="fa-solid fa-chart-line text-[18px] mb-1"></i><span class="text-[9px] tracking-wide">Analisis</span>
-        </button>
-        <button onclick="switchTab('produk')" id="tab-mobile-produk" class="flex-1 min-w-[70px] flex flex-col items-center justify-center p-2 text-gray-400 hover:text-emerald-600 transition">
-            <i class="fa-solid fa-boxes-stacked text-[18px] mb-1"></i><span class="text-[9px] tracking-wide">Menu</span>
-        </button>
-        <button onclick="switchTab('pengaturan')" id="tab-mobile-pengaturan" class="flex-1 min-w-[70px] flex flex-col items-center justify-center p-2 text-gray-400 hover:text-emerald-600 transition">
-            <i class="fa-solid fa-users-gear text-[18px] mb-1"></i><span class="text-[9px] tracking-wide">PIN</span>
-        </button>
-        <button onclick="switchTab('rekapabsensi')" id="tab-mobile-rekapabsensi" class="flex-1 min-w-[70px] flex flex-col items-center justify-center p-2 text-gray-400 hover:text-emerald-600 transition">
-            <i class="fa-solid fa-calendar-check text-[18px] mb-1"></i><span class="text-[9px] tracking-wide">Rekap</span>
-        </button>
-        <button onclick="switchTab('absensi')" id="tab-mobile-absensi" class="flex-1 min-w-[70px] flex flex-col items-center justify-center p-2 text-gray-400 hover:text-emerald-600 transition">
-            <i class="fa-solid fa-list-check text-[18px] mb-1"></i><span class="text-[9px] tracking-wide">Absen</span>
-        </button>
-        <button onclick="switchTab('void')" id="tab-mobile-void" class="flex-1 min-w-[70px] flex flex-col items-center justify-center p-2 text-gray-400 hover:text-emerald-600 transition">
-            <i class="fa-solid fa-triangle-exclamation text-[18px] mb-1"></i><span class="text-[9px] tracking-wide">Void</span>
-        </button>
-    </nav>
-
+    <script>
+        function toggleMobileMenu() {
+            const drawer = document.getElementById('mobile-menu-drawer');
+            const overlay = document.getElementById('mobile-menu-overlay');
+            if(drawer.classList.contains('-translate-x-full')) {
+                drawer.classList.remove('-translate-x-full');
+                overlay.classList.remove('hidden');
+            } else {
+                drawer.classList.add('-translate-x-full');
+                overlay.classList.add('hidden');
+            }
+        }
+    </script>
     <script src="owner.js"></script>
 </body>
 </html>

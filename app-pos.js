@@ -511,14 +511,23 @@ async function saveProduct(e) {
     const originalText = btnSubmit.innerText;
     btnSubmit.innerHTML = `<i class="fa-solid fa-spinner animate-spin mr-1"></i> Menyimpan...`;
     btnSubmit.setAttribute('disabled', 'true');
+    
+    const prodId = document.getElementById('prod-id').value || String(Date.now());
+    
+   
+    const existingProd = products.find(p => String(p.id) === String(prodId));
+    const retainedCost = existingProd ? (parseInt(existingProd.cost) || 0) : 0;
+
     const payload = { 
-        id: document.getElementById('prod-id').value || String(Date.now()), 
+        id: prodId, 
         name: document.getElementById('prod-name').value, 
         price: parseInt(document.getElementById('prod-price').value), 
         category: document.getElementById('prod-category').value, 
         stock: parseInt(document.getElementById('prod-stock').value) || 0, 
-        image: document.getElementById('prod-image-url').value.trim() 
+        image: document.getElementById('prod-image-url').value.trim(),
+        cost: retainedCost // <- Mempertahankan Harga Modal milik Owner
     };
+    
     try {
         await db.ref('products/' + payload.id).set(payload);
         showToast('Produk berhasil disimpan!', 'success');
@@ -526,7 +535,10 @@ async function saveProduct(e) {
     } catch(err) { 
         console.error(err); 
         showToast('Gagal menyimpan ke database.', 'error');
-    } finally { btnSubmit.innerText = originalText; btnSubmit.removeAttribute('disabled'); }
+    } finally { 
+        btnSubmit.innerText = originalText; 
+        btnSubmit.removeAttribute('disabled'); 
+    }
 }
 
 function editProduct(id) {
