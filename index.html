@@ -115,19 +115,29 @@
 
     <main class="flex-1 flex flex-col min-w-0 bg-[#f4f7f6]">
         
-<header class="bg-white p-4 flex justify-between items-center md:hidden shadow-sm z-20">
-    <div class="flex items-center gap-2 font-black text-gray-800">
-        <i class="fa-solid fa-leaf text-sage-600"></i> LINK NEO MEAL
+<header class="bg-white p-3 flex justify-between items-center md:hidden shadow-sm z-20">
+    <!-- Brand / Logo -->
+    <div class="flex items-center gap-2 font-black text-gray-800 text-sm">
+        <i class="fa-solid fa-leaf text-emerald-600"></i> LINK NEO MEAL
     </div>
     
-    <div class="flex items-center gap-3">
-        <div class="flex items-center gap-2 bg-sage-50 px-3 py-1.5 rounded-full border border-sage-100">
-            <i class="fa-solid fa-user text-[10px] text-sage-600"></i>
-            <p id="m-cashier-name" class="text-[10px] font-black text-sage-700 uppercase tracking-wide">Kasir</p>
+    <!-- Control Bar Kanan -->
+    <div class="flex items-center gap-2">
+        <!-- 1. User Info -->
+        <div class="flex items-center gap-1.5 bg-gray-50 px-3 py-1.5 rounded-full border border-gray-100">
+            <i class="fa-solid fa-user text-[9px] text-gray-400"></i>
+            <p id="m-cashier-name" class="text-[10px] font-black text-gray-700 uppercase tracking-wide">Kasir</p>
         </div>
-        
-        <button onclick="openLogoutModal()" class="text-red-500 w-8 h-8 flex items-center justify-center bg-red-50 rounded-full hover:bg-red-100 transition">
-            <i class="fa-solid fa-power-off text-xs"></i>
+
+        <!-- 2. Promo Button (Dibuat senada dengan User Info) -->
+        <button onclick="switchPage('promo', this)" class="flex items-center gap-1.5 bg-emerald-50 px-3 py-1.5 rounded-full border border-emerald-100 text-emerald-700 hover:bg-emerald-100 transition-colors">
+            <i class="fa-brands fa-whatsapp text-sm"></i>
+            <span class="text-[10px] font-bold">Promo</span>
+        </button>
+
+        <!-- 3. Logout -->
+        <button onclick="openLogoutModal()" class="w-7 h-7 flex items-center justify-center bg-red-50 text-red-500 rounded-full hover:bg-red-100 transition border border-red-100">
+            <i class="fa-solid fa-power-off text-[10px]"></i>
         </button>
     </div>
 </header>
@@ -483,7 +493,20 @@
         </div>
     </div>
 </div>
-    
+<div id="promo-edit-modal" class="fixed inset-0 z-[100] flex items-center justify-center p-5 bg-black/60 hidden">
+    <div class="bg-white rounded-2xl w-full max-w-sm p-5 shadow-2xl">
+        <h3 class="font-black text-gray-800 mb-4">Edit Data Member</h3>
+        <input type="hidden" id="edit-cust-key">
+        <div class="space-y-3">
+            <input type="text" id="edit-cust-name" placeholder="Nama" class="w-full border p-3 rounded-xl text-sm font-bold">
+            <input type="text" id="edit-cust-phone" placeholder="Nomor WA" class="w-full border p-3 rounded-xl text-sm font-bold">
+            <div class="flex gap-2 mt-4">
+                <button onclick="document.getElementById('promo-edit-modal').classList.add('hidden')" class="flex-1 bg-gray-100 py-3 rounded-xl font-bold text-sm">Batal</button>
+                <button onclick="savePromoCustomer()" class="flex-1 bg-emerald-600 text-white py-3 rounded-xl font-bold text-sm">Simpan</button>
+            </div>
+        </div>
+    </div>
+</div>    
     <script src="app-pos.js"></script>
 </body>
 </html>
