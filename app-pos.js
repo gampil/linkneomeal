@@ -1807,3 +1807,57 @@ async function saveExpense() {
         btn.innerHTML = "Simpan Pengeluaran";
     }
 }
+
+
+// ==========================================================================
+// PWA INSTALLATION HANDLER
+// ==========================================================================
+let deferredPrompt;
+
+window.addEventListener('beforeinstallprompt', (e) => {
+    // Mencegah browser memunculkan pop-up default secara otomatis (opsional)
+    e.preventDefault();
+    
+    // Simpan event agar bisa dipanggil nanti saat tombol ditekan
+    deferredPrompt = e;
+    
+    // Tampilkan tombol install kustom kita
+    const installBtn = document.getElementById('btn-install-pwa');
+    if (installBtn) {
+        installBtn.classList.remove('hidden');
+    }
+});
+
+window.addEventListener('appinstalled', () => {
+    // Sembunyikan tombol jika aplikasi berhasil di-install
+    const installBtn = document.getElementById('btn-install-pwa');
+    if (installBtn) installBtn.classList.add('hidden');
+    
+    // Bersihkan prompt
+    deferredPrompt = null;
+    console.log('PWA berhasil di-install');
+});
+
+async function installPWA() {
+    if (!deferredPrompt) {
+        alert("Aplikasi sudah terinstal atau browser tidak mendukung fitur ini.");
+        return;
+    }
+    
+    // Munculkan pop-up install bawaan browser
+    deferredPrompt.prompt();
+    
+    // Tunggu respon pengguna (apakah mereka klik Install atau Cancel)
+    const { outcome } = await deferredPrompt.userChoice;
+    
+    if (outcome === 'accepted') {
+        console.log('User menerima instalasi PWA');
+        const installBtn = document.getElementById('btn-install-pwa');
+        if (installBtn) installBtn.classList.add('hidden');
+    } else {
+        console.log('User menolak instalasi PWA');
+    }
+    
+    // Reset prompt karena hanya bisa dipanggil satu kali
+    deferredPrompt = null;
+}
