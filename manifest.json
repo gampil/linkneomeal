@@ -1,6 +1,6 @@
 {
   "name": "Kasir Link Neomeal",
-  "short_name": "App",
+  "short_name": "Link NeoMeal",
   "start_url": "/",
   "display": "standalone", 
   "background_color": "#ffffff",
