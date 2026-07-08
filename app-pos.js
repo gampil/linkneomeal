@@ -107,11 +107,24 @@ function getFormattedDate() {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-    listenToActiveSession();
     setCustomerMode('new');
     const imageInput = document.getElementById('prod-image-file');
     if (imageInput) imageInput.addEventListener('change', handleImageUpload);
-    setupRealtimeListeners();
+    
+    // --- PERBAIKAN: DETEKSI STATUS LOGIN AUTH ---
+    firebase.auth().onAuthStateChanged((user) => {
+        if (user) {
+            // JIKA SUKSES LOGIN: Baru pasang pendengar Realtime Database
+            setupRealtimeListeners();
+            listenToActiveSession();
+        } else {
+            // JIKA BELUM LOGIN / KASIR LOGOUT: Pastikan layar login muncul
+            const loginOverlay = document.getElementById('login-overlay');
+            if (loginOverlay) {
+                loginOverlay.classList.remove('hidden');
+            }
+        }
+    });
 });
 
 // ------------------------------------------------------------------------
@@ -199,35 +212,34 @@ async function handleLogin() {
     btn.innerHTML = `<i class="fa-solid fa-spinner animate-spin"></i> Memverifikasi...`;
     btn.disabled = true;
 
+    // --- TRIK KEAMANAN FIREBASE AUTH ---
+    // 1. Format username menjadi email (ex: "budi" -> "budi@linkneomeal.pos")
+    const safeEmail = name.toLowerCase() + '@linkneomeal.pos';
+    // 2. Format PIN menjadi password (ex: "1234" -> "1234-pos")
+    // Firebase mewajibkan password minimal 6 karakter, jadi kita tambah "-pos"
+    const safePassword = pin + '-pos';
+
     try {
-        const pinSnapshot = await db.ref(`cashier_pins/${name.toLowerCase()}`).once('value');
+        // Melakukan validasi resmi ke server Firebase Authentication
+        await firebase.auth().signInWithEmailAndPassword(safeEmail, safePassword);
         
-        if (!pinSnapshot.exists()) {
-            alert('Akses Ditolak: Username kasir tidak ditemukan / belum didaftarkan!');
-            btn.innerHTML = `Buka Kasir <i class="fa-solid fa-arrow-right text-xs ml-1"></i>`;
-            btn.disabled = false;
-            pinEl.value = ""; 
-            return;
-        }
-
-        const validPin = String(pinSnapshot.val());
-
-        if (pin !== validPin) {
-            alert('Akses Ditolak: PIN Kasir Salah!');
-            btn.innerHTML = `Buka Kasir <i class="fa-solid fa-arrow-right text-xs ml-1"></i>`;
-            btn.disabled = false;
-            pinEl.value = ""; 
-            return;
-        }
-
+        // Jika tidak error, berarti Login SUKSES!
         const displayName = name.replace(/\b\w/g, l => l.toUpperCase());
         processAbsensi(displayName);
         
     } catch (error) {
         console.error("Error Login:", error);
-        alert("Gagal memvalidasi PIN. Periksa koneksi internet.");
+        
+        // Menangani pesan error spesifik dari Firebase
+        if (error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
+            alert('Akses Ditolak: Username atau PIN Kasir Salah!');
+        } else {
+            alert("Gagal memvalidasi PIN. Periksa koneksi internet.");
+        }
+        
         btn.innerHTML = `Buka Kasir <i class="fa-solid fa-arrow-right text-xs ml-1"></i>`;
         btn.disabled = false;
+        pinEl.value = ""; 
     }
 }
 
@@ -311,16 +323,15 @@ async function handleLogout() {
     btn.innerHTML = `<i class="fa-solid fa-spinner animate-spin"></i> Memverifikasi...`;
     btn.disabled = true;
 
-    try {
-        const pinSnapshot = await db.ref(`cashier_pins/${activeName.toLowerCase()}`).once('value');
-        if (!pinSnapshot.exists() || pin !== String(pinSnapshot.val())) {
-            alert('Akses Ditolak: PIN Kasir Salah!');
-            pinInput.value = "";
-            btn.innerHTML = `Konfirmasi Absen Pulang`;
-            btn.disabled = false;
-            return;
-        }
+    // Gunakan trik format yang sama
+    const safeEmail = activeName.toLowerCase() + '@linkneomeal.pos';
+    const safePassword = pin + '-pos';
 
+    try {
+        // Validasi PIN ulang via Authentication
+        await firebase.auth().signInWithEmailAndPassword(safeEmail, safePassword);
+
+        // Jika sukses, cari sesi absensi aktif
         const sessionSnap = await db.ref('attendance')
             .orderByChild('status')
             .equalTo('Sedang Bekerja')
@@ -333,16 +344,18 @@ async function handleLogout() {
             }
         });
 
-        if (!foundSessionId) {
-            throw new Error("Sesi kerja tidak ditemukan. Silakan hubungi Owner.");
-        }
+        if (!foundSessionId) throw new Error("Sesi kerja tidak ditemukan. Silakan hubungi Owner.");
 
         showToast('Merekam absensi pulang...', 'loading');
         
+        // Update jam pulang di database
         await db.ref('attendance/' + foundSessionId).update({
             logoutTime: getFormattedDate(),
             status: 'Selesai Shift'
         });
+
+        // Keluarkan user dari Firebase Auth
+        await firebase.auth().signOut();
 
         showToast('Berhasil Absen Pulang!', 'success');
         document.getElementById('login-cashier-name').value = "";
@@ -351,7 +364,12 @@ async function handleLogout() {
 
     } catch (e) {
         console.error("Error Logout:", e);
-        showToast(e.message || 'Koneksi terputus.', 'error');
+        if (e.code === 'auth/invalid-credential' || e.code === 'auth/wrong-password') {
+            alert('Akses Ditolak: PIN Kasir Salah!');
+            pinInput.value = "";
+        } else {
+            showToast(e.message || 'Koneksi terputus.', 'error');
+        }
     } finally {
         btn.innerHTML = `Konfirmasi Absen Pulang`;
         btn.disabled = false;
