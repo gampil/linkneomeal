@@ -1481,7 +1481,7 @@ function openInvoiceModal(trx) {
     let sub = 0;
     
     let html = `
-        <div class="text-center font-black text-sm mb-1 tracking-wider">LINK NEO MEAL</div>
+        <div class="text-center font-black text-sm mb-1 tracking-wider">LINK NEOMEAL</div>
         <div class="border-t-[1.5px] border-dashed border-gray-800 my-2"></div>
         <div class="grid grid-cols-[70px_1fr] gap-1 text-[11px] text-gray-700">
             <div class="text-gray-500">ID</div><div class="font-bold">: ${trx.id}</div>
@@ -1577,7 +1577,7 @@ async function printThermal(trxId) {
             await new Promise(r => setTimeout(r, 50)); 
         };
         
-        await w(I); await w(C); await w(B1); await w("LINK NEO MEAL\n"); 
+        await w(I); await w(C); await w(B1); await w("LINK NEOMEAL\n"); 
         await w(B0); await w("--------------------------------\n"); 
         await w(L);
         await w(`ID    : ${trx.id}\n`); await w(`Waktu : ${trx.date}\n`); await w(`Kasir : ${trx.cashier}\n`); await w(`Tipe  : ${trx.orderType || 'Dine In'}\n`);
@@ -1635,7 +1635,7 @@ async function printRecapThermal(recap) {
         await new Promise(r => setTimeout(r, 50)); 
     };
     
-    await w(I); await w(C); await w(B1); await w("REKAP CLOSING SHIFT\n"); await w("LINK NEO MEAL\n"); await w(B0); 
+    await w(I); await w(C); await w(B1); await w("REKAP CLOSING SHIFT\n"); await w("LINK NEOMEAL\n"); await w(B0); 
     await w("================================\n"); await w(L);
     await w(`Kasir  : ${recap.kasir}\n`); await w(`Waktu  : ${recap.waktu}\n`); 
     await w("--------------------------------\n");
