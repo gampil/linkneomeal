@@ -83,41 +83,46 @@
         </div>
     </div>
 
-    <aside class="w-20 lg:w-64 bg-white border-r border-gray-100 flex flex-col justify-between hidden md:flex z-10 shadow-[4px_0_24px_rgba(0,0,0,0.02)]">
+    <aside class="w-20 lg:w-64 overflow-hidden bg-white border-r border-gray-100 flex flex-col justify-between hidden md:flex z-10 shadow-[4px_0_24px_rgba(0,0,0,0.02)]">
         <div class="p-6">
             <div class="flex items-center gap-3 mb-10">
-                <div class="w-10 h-10 bg-emerald-50 rounded-full flex items-center justify-center text-emerald-600 border border-emerald-100 shrink-0"><i class="fa-solid fa-pepper-hot"></i></div>
+                <img src="logo.png" alt="Logo Link Neomeal" class="h-8 w-auto object-contain">
                 <h1 class="text-lg font-black tracking-tight text-gray-800 hidden lg:block"></h1>
             </div>
  <nav class="space-y-2">
     <button onclick="switchPage('kasir', this)" class="nav-btn w-full flex items-center gap-4 p-3.5 rounded-2xl bg-emerald-600 text-white font-bold transition">
         <i class="fa-solid fa-border-all text-lg w-5 text-center shrink-0"></i> 
-        <span class="nav-text text-sm whitespace-nowrap">Menu / Kasir</span>
+        <span class="nav-text text-sm whitespace-nowrap hidden lg:block">Menu / Kasir</span>
     </button>
     
     <button onclick="switchPage('produk', this)" class="nav-btn w-full flex items-center gap-4 p-3.5 rounded-2xl text-gray-500 hover:bg-emerald-50 hover:text-emerald-600 font-semibold transition">
         <i class="fa-solid fa-boxes-stacked text-lg w-5 text-center shrink-0"></i> 
-        <span class="nav-text text-sm whitespace-nowrap">Inventaris</span>
+        <span class="nav-text text-sm whitespace-nowrap hidden lg:block">Inventaris</span>
     </button>
     
     <button onclick="switchPage('struk', this)" class="nav-btn w-full flex items-center gap-4 p-3.5 rounded-2xl text-gray-500 hover:bg-emerald-50 hover:text-emerald-600 font-semibold transition">
         <i class="fa-solid fa-receipt text-lg w-5 text-center shrink-0"></i> 
-        <span class="nav-text text-sm whitespace-nowrap">Riwayat Struk</span>
+        <span class="nav-text text-sm whitespace-nowrap hidden lg:block">Riwayat Struk</span>
     </button>
     
     <button onclick="switchPage('promo', this)" class="nav-btn w-full flex items-center gap-4 p-3.5 rounded-2xl text-gray-500 hover:bg-emerald-50 hover:text-emerald-600 font-semibold transition">
         <i class="fa-solid fa-bullhorn text-lg w-5 text-center shrink-0"></i> 
-        <span class="nav-text text-sm whitespace-nowrap">Promo WA</span>
+        <span class="nav-text text-sm whitespace-nowrap hidden lg:block">Promo WA</span>
     </button>
     
     <button onclick="switchPage('keuangan', this)" class="nav-btn w-full flex items-center gap-4 p-3.5 rounded-2xl text-gray-500 hover:bg-emerald-50 hover:text-emerald-600 font-semibold transition">
         <i class="fa-solid fa-chart-pie text-lg w-5 text-center shrink-0"></i> 
-        <span class="nav-text text-sm whitespace-nowrap">Akuntansi</span>
+        <span class="nav-text text-sm whitespace-nowrap hidden lg:block">Keuangan</span>
     </button>
     
     <button onclick="openExpenseModal()" class="nav-btn w-full flex items-center gap-4 p-3.5 rounded-2xl text-gray-500 hover:bg-orange-50 hover:text-orange-600 font-semibold transition">
         <i class="fa-solid fa-money-bill-transfer text-lg w-5 text-center shrink-0"></i> 
-        <span class="nav-text text-sm whitespace-nowrap">Pengeluaran</span>
+        <span class="nav-text text-sm whitespace-nowrap hidden lg:block">Pengeluaran</span>
+    </button>
+    
+    <button onclick="installPWA()" class="install-pwa-btn hidden nav-btn w-full flex items-center gap-4 p-3.5 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-bold transition shadow-md shadow-emerald-200/50 mt-4 animate-pulse">
+        <i class="fa-solid fa-download text-lg w-5 text-center shrink-0"></i> 
+        <span class="nav-text text-sm whitespace-nowrap hidden lg:block">Install Aplikasi</span>
     </button>
 </nav>
         </div>
@@ -140,29 +145,29 @@
     <main class="flex-1 flex flex-col min-w-0 bg-[#f4f7f6]">
         
 <header class="bg-white p-3 flex justify-between items-center md:hidden shadow-sm z-20">
-    <!-- Brand / Logo -->
     <div class="flex items-center gap-2 font-black text-gray-800 text-sm">
-        <i class="fa-solid fa-leaf text-emerald-600"></i> LINK NEO MEAL
+        <img src="logo.png" alt="Logo Link Neomeal" class="h-8 w-auto object-contain">
     </div>
     
-    <!-- Control Bar Kanan -->
-    <div class="flex items-center gap-2">
-        <!-- 1. User Info -->
-        <div class="flex items-center gap-1.5 bg-gray-50 px-3 py-1.5 rounded-full border border-gray-100">
+    <div class="flex items-center gap-1.5 sm:gap-2">
+        <div class="hidden sm:flex items-center gap-1.5 bg-gray-50 px-3 py-1.5 rounded-full border border-gray-100">
             <i class="fa-solid fa-user text-[9px] text-gray-400"></i>
             <p id="m-cashier-name" class="text-[10px] font-black text-gray-700 uppercase tracking-wide">Kasir</p>
         </div>
 
-        <!-- 2. Promo Button (Dibuat senada dengan User Info) -->
-        <button onclick="switchPage('promo', this)" class="flex items-center gap-1.5 bg-emerald-50 px-3 py-1.5 rounded-full border border-emerald-100 text-emerald-700 hover:bg-emerald-100 transition-colors">
+        <button onclick="switchPage('promo', this)" class="flex items-center gap-1.5 bg-emerald-50 px-2.5 py-1.5 sm:px-3 sm:py-1.5 rounded-full border border-emerald-100 text-emerald-700 hover:bg-emerald-100 transition-colors">
             <i class="fa-brands fa-whatsapp text-sm"></i>
-            <span class="text-[10px] font-bold">Promo</span>
+            <span class="text-[10px] font-bold hidden sm:inline">Promo</span>
         </button>
-<button id="btn-install-pwa" onclick="installPWA()" class="nav-btn hidden w-full flex items-center gap-4 p-3.5 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-bold transition shadow-md shadow-emerald-200/50 mt-4 animate-pulse">
-    <i class="fa-solid fa-download text-lg w-5 text-center shrink-0"></i> 
-    <span class="nav-text text-sm whitespace-nowrap">Install Aplikasi</span>
-</button>
-        <!-- 3. Logout -->
+
+        <button onclick="toggleFullScreen()" id="btn-fullscreen" class="w-7 h-7 flex items-center justify-center bg-gray-50 text-gray-600 rounded-full hover:bg-gray-100 transition border border-gray-200">
+            <i class="fa-solid fa-expand text-[10px]"></i>
+        </button>
+
+        <button onclick="installPWA()" class="install-pwa-btn hidden w-7 h-7 flex items-center justify-center bg-blue-50 text-blue-600 rounded-full hover:bg-blue-100 transition border border-blue-100 animate-pulse">
+            <i class="fa-solid fa-download text-[10px]"></i>
+        </button>
+
         <button onclick="openLogoutModal()" class="w-7 h-7 flex items-center justify-center bg-red-50 text-red-500 rounded-full hover:bg-red-100 transition border border-red-100">
             <i class="fa-solid fa-power-off text-[10px]"></i>
         </button>
