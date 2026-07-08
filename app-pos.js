@@ -1814,25 +1814,20 @@ async function saveExpense() {
 let deferredPrompt;
 
 window.addEventListener('beforeinstallprompt', (e) => {
-    // Mencegah browser memunculkan pop-up default secara otomatis (opsional)
     e.preventDefault();
-    
-    // Simpan event agar bisa dipanggil nanti saat tombol ditekan
     deferredPrompt = e;
     
-    // Tampilkan tombol install kustom kita
-    const installBtn = document.getElementById('btn-install-pwa');
-    if (installBtn) {
-        installBtn.classList.remove('hidden');
-    }
+    // Tampilkan SEMUA tombol install (desktop maupun mobile)
+    document.querySelectorAll('.install-pwa-btn').forEach(btn => {
+        btn.classList.remove('hidden');
+    });
 });
 
 window.addEventListener('appinstalled', () => {
-    // Sembunyikan tombol jika aplikasi berhasil di-install
-    const installBtn = document.getElementById('btn-install-pwa');
-    if (installBtn) installBtn.classList.add('hidden');
-    
-    // Bersihkan prompt
+    // Sembunyikan SEMUA tombol jika berhasil di-install
+    document.querySelectorAll('.install-pwa-btn').forEach(btn => {
+        btn.classList.add('hidden');
+    });
     deferredPrompt = null;
     console.log('PWA berhasil di-install');
 });
@@ -1843,20 +1838,54 @@ async function installPWA() {
         return;
     }
     
-    // Munculkan pop-up install bawaan browser
     deferredPrompt.prompt();
-    
-    // Tunggu respon pengguna (apakah mereka klik Install atau Cancel)
     const { outcome } = await deferredPrompt.userChoice;
     
     if (outcome === 'accepted') {
         console.log('User menerima instalasi PWA');
-        const installBtn = document.getElementById('btn-install-pwa');
-        if (installBtn) installBtn.classList.add('hidden');
+        // Sembunyikan SEMUA tombol setelah diterima
+        document.querySelectorAll('.install-pwa-btn').forEach(btn => {
+            btn.classList.add('hidden');
+        });
     } else {
         console.log('User menolak instalasi PWA');
     }
     
-    // Reset prompt karena hanya bisa dipanggil satu kali
     deferredPrompt = null;
+}
+
+// ==========================================================================
+// FULLSCREEN TOGGLE HANDLER
+// ==========================================================================
+function toggleFullScreen() {
+    const icon = document.querySelector('#btn-fullscreen i');
+    
+    if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+        // Masuk Fullscreen
+        const elem = document.documentElement;
+        if (elem.requestFullscreen) {
+            elem.requestFullscreen();
+        } else if (elem.webkitRequestFullscreen) { /* Safari */
+            elem.webkitRequestFullscreen();
+        }
+        
+        // Ubah icon jadi compress (mengecil)
+        if (icon) {
+            icon.classList.remove('fa-expand');
+            icon.classList.add('fa-compress');
+        }
+    } else {
+        // Keluar Fullscreen
+        if (document.exitFullscreen) {
+            document.exitFullscreen();
+        } else if (document.webkitExitFullscreen) { /* Safari */
+            document.webkitExitFullscreen();
+        }
+        
+        // Ubah icon kembali ke expand
+        if (icon) {
+            icon.classList.remove('fa-compress');
+            icon.classList.add('fa-expand');
+        }
+    }
 }
