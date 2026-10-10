@@ -1464,21 +1464,35 @@ const BLE_PRINT_SERVICES = [
 async function connectBluetooth() {
     if (isConnectingBle) return; isConnectingBle = true;
     const btn = document.getElementById('btn-bluetooth-txt'); btn.innerHTML = `<i class="fa-solid fa-spinner animate-spin"></i>...`;
+
+    // Pastikan koneksi lama diputus dulu agar tidak "Connection attempt failed"
+    // karena GATT masih nyantol ke perangkat sebelumnya.
+    if (bleDevice && bleDevice.gatt && bleDevice.gatt.connected) {
+        try { bleDevice.gatt.disconnect(); } catch (e) {}
+    }
+    bleDevice = null; bleCharacteristic = null;
+
+    // PERINGATAN PENTING: pairing printer lewat Pengaturan Bluetooth/OS harus DIHAPUS.
+    // Printer yang sudah terpasang di OS TIDAK AKAN muncul di chooser Web Bluetooth.
     try {
-        // FILTER LONGGAR: jika printer tidak advertise service 18f0 atau namanya tidak
-        // cocok dengan prefix di bawah, perangkat tetap muncul di daftar pilihan.
-        // Ini memperbaiki masalah "driver/device ga kebaca" pada printer EPPOS portable.
+        // acceptAllDevices: semua perangkat BLE muncul di daftar, jadi printer EPPOS
+        // dengan nama/UUID apa pun pasti terlihat. Service printer dicari via optionalServices + fallback.
         bleDevice = await navigator.bluetooth.requestDevice({
-            filters: [
-                { services: BLE_PRINT_SERVICES },
-                { namePrefix: 'RPP' }, { namePrefix: 'MPP' }, { namePrefix: 'MTP' },
-                { namePrefix: 'PT' },  { namePrefix: 'XP-' }, { namePrefix: 'EPP' },
-                { namePrefix: 'Printer' }
-            ],
+            acceptAllDevices: true,
             optionalServices: BLE_PRINT_SERVICES
         });
         bleDevice.addEventListener('gattserverdisconnected', onBluetoothDisconnected);
-        const srv = await bleDevice.gatt.connect();
+        console.log("Memilih perangkat:", bleDevice.name || "(tanpa nama)", bleDevice.id);
+        // Beri waktu OS melepas koneksi sebelum request GATT, lalu retry bila gagal.
+        let srv = null;
+        for (let attempt = 1; attempt <= 3 && !srv; attempt++) {
+            try { srv = await bleDevice.gatt.connect(); }
+            catch (e) {
+                console.warn(`Gagal connect percobaan ${attempt}:`, e.message);
+                await new Promise(r => setTimeout(r, 800));
+            }
+        }
+        if (!srv) throw new Error("GAGAL KONEK (NetworkError). Kemungkinan besar printer masih tersimpan/paired di Bluetooth HP/PC. Hapus (Unpair/Forget) printer dari pengaturan Bluetooth, restart printer, lalu coba lagi.");
         // Cari service printer yang tersedia (coba semua UUID umum).
         let svc = null;
         for (const uuid of BLE_PRINT_SERVICES) {
@@ -1502,7 +1516,16 @@ async function connectBluetooth() {
         if (bleCharacteristic) { btn.innerText = "Terhubung ✅"; isConnectingBle = false; return true; }
         throw new Error("Karakteristik write tidak ditemukan.");
     } catch (e) {
-        console.error("Koneksi Bluetooth gagal:", e);
+        let msg = "Koneksi Bluetooth gagal: ";
+        if (e.name === 'NotFoundError') {
+            msg += "Anda menutup/membatalkan daftar perangkat. Klik tombolnya lagi dan pilih printer dari daftar.";
+        } else if (e.name === 'NetworkError' || /connection attempt failed/i.test(e.message)) {
+            msg += "Koneksi ditolak OS. PASTIKAN printer sudah DIHAPUS (Unpair/Forget) dari Pengaturan Bluetooth, lalu coba lagi.";
+        } else {
+            msg += e.message;
+        }
+        console.error(msg, e);
+        if (typeof showToast === 'function') showToast(msg, 'error'); else alert(msg);
         btn.innerText = "Hubungkan Printer"; isConnectingBle = false; return false;
     }
 }
