@@ -1452,82 +1452,22 @@ function exportToExcel() {
 // ------------------------------------------------------------------------
 // BLUETOOTH PRINTING
 // ------------------------------------------------------------------------
-// Daftar UUID layanan printer termal Bluetooth yang umum dipakai.
-// 18f0 = standar printer termal, ff00/fff2/ae30 = dipakai banyak merek EPPOS/Goojprt/Xprinter.
-const BLE_PRINT_SERVICES = [
-    '000018f0-0000-1000-8000-00805f9b34fb',
-    '0000ff00-0000-1000-8000-00805f9b34fb',
-    '0000fff2-0000-1000-8000-00805f9b34fb',
-    '0000ae30-0000-1000-8000-00805f9b34fb'
-];
-
 async function connectBluetooth() {
     if (isConnectingBle) return; isConnectingBle = true;
     const btn = document.getElementById('btn-bluetooth-txt'); btn.innerHTML = `<i class="fa-solid fa-spinner animate-spin"></i>...`;
-
-    // Pastikan koneksi lama diputus dulu agar tidak "Connection attempt failed"
-    // karena GATT masih nyantol ke perangkat sebelumnya.
-    if (bleDevice && bleDevice.gatt && bleDevice.gatt.connected) {
-        try { bleDevice.gatt.disconnect(); } catch (e) {}
-    }
-    bleDevice = null; bleCharacteristic = null;
-
-    // PERINGATAN PENTING: pairing printer lewat Pengaturan Bluetooth/OS harus DIHAPUS.
-    // Printer yang sudah terpasang di OS TIDAK AKAN muncul di chooser Web Bluetooth.
     try {
-        // acceptAllDevices: semua perangkat BLE muncul di daftar, jadi printer EPPOS
-        // dengan nama/UUID apa pun pasti terlihat. Service printer dicari via optionalServices + fallback.
         bleDevice = await navigator.bluetooth.requestDevice({
-            acceptAllDevices: true,
-            optionalServices: BLE_PRINT_SERVICES
+            filters: [{ services: ['000018f0-0000-1000-8000-00805f9b34fb'] }, { namePrefix: 'RPP' }, { namePrefix: 'MTP' }, { namePrefix: 'PT' }],
+            optionalServices: ['000018f0-0000-1000-8000-00805f9b34fb', '0000ff00-0000-1000-8000-00805f9b34fb']
         });
         bleDevice.addEventListener('gattserverdisconnected', onBluetoothDisconnected);
-        console.log("Memilih perangkat:", bleDevice.name || "(tanpa nama)", bleDevice.id);
-        // Beri waktu OS melepas koneksi sebelum request GATT, lalu retry bila gagal.
-        let srv = null;
-        for (let attempt = 1; attempt <= 3 && !srv; attempt++) {
-            try { srv = await bleDevice.gatt.connect(); }
-            catch (e) {
-                console.warn(`Gagal connect percobaan ${attempt}:`, e.message);
-                await new Promise(r => setTimeout(r, 800));
-            }
-        }
-        if (!srv) throw new Error("GAGAL KONEK (NetworkError). Kemungkinan besar printer masih tersimpan/paired di Bluetooth HP/PC. Hapus (Unpair/Forget) printer dari pengaturan Bluetooth, restart printer, lalu coba lagi.");
-        // Cari service printer yang tersedia (coba semua UUID umum).
-        let svc = null;
-        for (const uuid of BLE_PRINT_SERVICES) {
-            try { svc = await srv.getPrimaryService(uuid); break; } catch (e) { /* coba UUID berikutnya */ }
-        }
-        // FALLBACK: jika tidak ada service yang cocok berdasarkan UUID, ambil service pertama
-        // yang punya characteristic writable. Banyak printer EPPOS memakai UUID non-standar.
-        if (!svc) {
-            const allServices = await srv.getPrimaryServices();
-            for (const s of allServices) {
-                try {
-                    const cs = await s.getCharacteristics();
-                    if (cs.some(c => c.properties.write || c.properties.writeWithoutResponse)) { svc = s; break; }
-                } catch (e) { /* lanjut ke service berikutnya */ }
-            }
-        }
-        if (!svc) throw new Error("Service printer tidak ditemukan.");
+        const srv = await bleDevice.gatt.connect();
+        let svc; try { svc = await srv.getPrimaryService('000018f0-0000-1000-8000-00805f9b34fb'); } catch(e) { svc = await srv.getPrimaryService('0000ff00-0000-1000-8000-00805f9b34fb'); }
         const chars = await svc.getCharacteristics();
-        // Utamakan writeWithResponse, lalu writeWithoutResponse.
-        bleCharacteristic = chars.find(c => c.properties.write) || chars.find(c => c.properties.writeWithoutResponse);
+        bleCharacteristic = chars.find(c => c.properties.write || c.properties.writeWithoutResponse);
         if (bleCharacteristic) { btn.innerText = "Terhubung ✅"; isConnectingBle = false; return true; }
-        throw new Error("Karakteristik write tidak ditemukan.");
-    } catch (e) {
-        let msg = "Koneksi Bluetooth gagal: ";
-        if (e.name === 'NotFoundError') {
-            msg += "Anda menutup/membatalkan daftar perangkat. Klik tombolnya lagi dan pilih printer dari daftar.";
-        } else if (e.name === 'NetworkError' || /connection attempt failed/i.test(e.message)) {
-            msg += "Koneksi ditolak OS. PASTIKAN printer sudah DIHAPUS (Unpair/Forget) dari Pengaturan Bluetooth, lalu coba lagi.";
-        } else {
-            msg += e.message;
-        }
-        console.error(msg, e);
-        if (typeof showToast === 'function') showToast(msg, 'error'); else alert(msg);
-        btn.innerText = "Hubungkan Printer"; isConnectingBle = false; return false;
-    }
+        throw new Error("Tidak didukung.");
+    } catch (e) { btn.innerText = "Hubungkan Printer"; isConnectingBle = false; return false; }
 }
 function onBluetoothDisconnected() { bleCharacteristic = null; bleDevice = null; document.getElementById('btn-bluetooth-txt').innerText = "Hubungkan Printer"; }
 
@@ -1568,16 +1508,7 @@ function openInvoiceModal(trx) {
     html += `<div class="flex justify-between text-[11px] text-gray-600"><span>Subtotal</span><span>Rp ${sub.toLocaleString('id-ID')}</span></div>`;
     
     if (trx.discount > 0) {
-        // BUGFIX: nilai diskon yang tersimpan adalah persentase, jadi jangan pakai "Rp" untuk diskon persen
-        const discPct = parseInt(trx.discount) || 0;
-        let discLabel = "Diskon", discVal;
-        if (discPct <= 100) {
-            discLabel = `Diskon (${discPct}%)`;
-            discVal = `-${Math.round((discPct / 100) * sub).toLocaleString('id-ID')}`;
-        } else {
-            discVal = `-Rp ${discPct.toLocaleString('id-ID')}`;
-        }
-        html += `<div class="flex justify-between text-[11px] text-red-600 font-bold"><span>${discLabel}</span><span>${discVal}</span></div>`;
+        html += `<div class="flex justify-between text-[11px] text-red-600 font-bold"><span>Diskon</span><span>-Rp ${trx.discount.toLocaleString('id-ID')}</span></div>`;
     }
     
     html += `
@@ -1666,20 +1597,9 @@ async function printThermal(trxId) {
         let subTxt = `Rp ${sub.toLocaleString('id-ID')}`;
         await w("Subtotal" + " ".repeat(32 - (8 + subTxt.length)) + subTxt + "\n");
         
-        // BUGFIX: diskon disimpan dalam bentuk persentase, jangan cetak "Rp" untuk diskon persen
-        const rawDisc = parseInt(trx.discount) || 0;
-        if (rawDisc > 0 && sub > 0) {
-            let dTxt, discLabel;
-            if (rawDisc <= 100) {
-                // Data baru / data lama yang benar: nilai = persentase -> tampilkan nominal rupiah TANPA "Rp" + label persen
-                discLabel = `Diskon (${rawDisc}%)`;
-                dTxt = `-${Math.round((rawDisc / 100) * sub).toLocaleString('id-ID')}`;
-            } else {
-                // Data lama yang tersimpan sebagai nominal rupiah -> tetap pakai "Rp"
-                discLabel = "Diskon";
-                dTxt = `-Rp ${rawDisc.toLocaleString('id-ID')}`;
-            }
-            await w(discLabel + " ".repeat(Math.max(1, 32 - (discLabel.length + dTxt.length))) + dTxt + "\n");
+        if (trx.discount > 0) {
+            let dTxt = `-Rp ${trx.discount.toLocaleString('id-ID')}`;
+            await w("Diskon" + " ".repeat(32 - (6 + dTxt.length)) + dTxt + "\n");
         }
         
         await w(B1); 
