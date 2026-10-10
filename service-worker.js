@@ -1,4 +1,4 @@
-const CACHE_NAME = 'linkneomeal-cache-v2-discount-ble';
+const CACHE_NAME = 'linkneomeal-cache-v1';
 const assetsToCache = [
   './',
   './index.html',

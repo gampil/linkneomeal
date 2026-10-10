@@ -897,16 +897,6 @@ function sendWaPromo(phone, name) {
     window.open(`https://wa.me/${formattedPhone}?text=${encodeURIComponent(message)}`, '_blank');
 }
 
-// Satu sumber perhitungan diskon untuk tampilan dan semua jalur checkout.
-function getCartPaymentTotals() {
-    const subtotal = cart.reduce((sum, item) => sum + (Number(item.price) || 0) * (Number(item.qty) || 0), 0);
-    const el = document.getElementById('pay-discount-percent');
-    const percent = el && el.value !== '' ? Number(el.value) : 0;
-    if (!Number.isFinite(percent) || percent < 0 || percent > 100) return null;
-    const discount = Math.round(subtotal * percent / 100);
-    return { subtotal, percent, discount, total: Math.max(0, subtotal - discount) };
-}
-
 function renderCart() {
     const container = document.getElementById('cart-items');
     if (!container) return;
@@ -947,18 +937,21 @@ function renderCart() {
             </div>`;
     });
 
-    const totals = getCartPaymentTotals();
-    const subtotalEl = document.getElementById('pay-discount-percent');
-    if (!totals) {
-        if (subtotalEl) subtotalEl.setCustomValidity('Diskon harus antara 0 sampai 100 persen');
-    } else if (subtotalEl) subtotalEl.setCustomValidity('');
-    const discountCalculated = totals ? totals.discount : 0;
-    const finalTotal = totals ? totals.total : subtotal;
-    const discountRow = document.getElementById('div-discount');
-    if (discountRow) discountRow.classList.toggle('hidden', discountCalculated <= 0);
-    const discountLabel = document.getElementById('txt-discount-display');
-    if (discountLabel) discountLabel.innerText = `- Rp ${discountCalculated.toLocaleString('id-ID')}`;
-
+    const discountInput = document.getElementById('pay-discount-percent');
+    let discountCalculated = 0;
+    if (discountInput) {
+        const discVal = parseInt(discountInput.value) || 0;
+        if (discVal > 0 && discVal <= 100) {
+            discountCalculated = Math.round((discVal / 100) * subtotal);
+            if(document.getElementById('txt-discount-display')) document.getElementById('txt-discount-display').innerText = `- Rp ${discountCalculated.toLocaleString('id-ID')}`;
+            if(document.getElementById('div-discount')) document.getElementById('div-discount').classList.remove('hidden');
+        } else { 
+            if(document.getElementById('div-discount')) document.getElementById('div-discount').classList.add('hidden'); 
+        }
+    }
+    
+    const finalTotal = Math.max(0, subtotal - discountCalculated);
+    
     if (document.getElementById('txt-subtotal')) document.getElementById('txt-subtotal').innerText = `Rp ${subtotal.toLocaleString('id-ID')}`;
     if (document.getElementById('txt-subtotal-modal')) document.getElementById('txt-subtotal-modal').innerText = `Rp ${subtotal.toLocaleString('id-ID')}`;
     if (document.getElementById('txt-total')) document.getElementById('txt-total').innerText = `Rp ${finalTotal.toLocaleString('id-ID')}`;
@@ -1043,9 +1036,7 @@ function generateNextTrxId() {
 async function processCheckout() {
     if (cart.length === 0) return alert('Keranjang masih kosong! Silakan pilih produk terlebih dahulu.');
 
-    const totals = getCartPaymentTotals();
-    if (!totals) return alert('Diskon harus antara 0 dan 100%.');
-    const total = totals.total;
+    const total = parseInt(document.getElementById('txt-total').innerText.replace(/[^0-9]/g, '')) || 0;
     const method = document.getElementById('pay-method').value;
     const cashInputEl = document.getElementById('pay-cash');
     const cashInputStr = cashInputEl.value.trim();
@@ -1079,7 +1070,10 @@ async function processCheckout() {
         if (matchedTrx) phone = matchedTrx.phone;
     }
     
-    const { discount } = totals;
+    let subtotal = cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
+    const discountInput = parseInt(document.getElementById('pay-discount-percent').value) || 0;
+    let discount = 0; 
+    if (discountInput > 0 && discountInput <= 100) discount = Math.round((discountInput / 100) * subtotal);
 
     const newTrxId = generateNextTrxId();
 
@@ -1458,74 +1452,24 @@ function exportToExcel() {
 // ------------------------------------------------------------------------
 // BLUETOOTH PRINTING
 // ------------------------------------------------------------------------
-const BLE_PRINT_SERVICES = [
-    '000018f0-0000-1000-8000-00805f9b34fb',
-    '0000ff00-0000-1000-8000-00805f9b34fb',
-    '0000ffe0-0000-1000-8000-00805f9b34fb',
-    '0000ae30-0000-1000-8000-00805f9b34fb'
-];
-let thermalPrintBusy = false;
 async function connectBluetooth() {
-    if (!navigator.bluetooth) {
-        alert('Web Bluetooth tidak didukung. Gunakan Chrome/Edge Android atau desktop melalui HTTPS. Printer Bluetooth Classic/SPP tidak bisa dicetak langsung melalui Web Bluetooth.');
-        return false;
-    }
-    if (isConnectingBle) return false;
-    isConnectingBle = true;
-    const btn = document.getElementById('btn-bluetooth-txt');
-    if (btn) btn.textContent = 'Menghubungkan...';
+    if (isConnectingBle) return; isConnectingBle = true;
+    const btn = document.getElementById('btn-bluetooth-txt'); btn.innerHTML = `<i class="fa-solid fa-spinner animate-spin"></i>...`;
     try {
-        // Harus dipanggil dari klik pengguna; jangan sembunyikan printer karena prefix nama.
-        const device = await navigator.bluetooth.requestDevice({
-            acceptAllDevices: true,
-            optionalServices: BLE_PRINT_SERVICES
+        bleDevice = await navigator.bluetooth.requestDevice({
+            filters: [{ services: ['000018f0-0000-1000-8000-00805f9b34fb'] }, { namePrefix: 'RPP' }, { namePrefix: 'MTP' }, { namePrefix: 'PT' }],
+            optionalServices: ['000018f0-0000-1000-8000-00805f9b34fb', '0000ff00-0000-1000-8000-00805f9b34fb']
         });
-        const server = await device.gatt.connect();
-        let characteristic = null;
-        for (const uuid of BLE_PRINT_SERVICES) {
-            try {
-                const service = await server.getPrimaryService(uuid);
-                const chars = await service.getCharacteristics();
-                characteristic = chars.find(c => c.properties.write || c.properties.writeWithoutResponse);
-                if (characteristic) break;
-            } catch (err) { /* printer memakai UUID lain, coba layanan berikutnya */ }
-        }
-        if (!characteristic) {
-            server.disconnect();
-            throw new Error('Printer tidak memiliki layanan BLE cetak yang didukung. Kemungkinan printer Bluetooth Classic/SPP atau memakai UUID khusus.');
-        }
-        bleDevice = device;
-        bleCharacteristic = characteristic;
-        device.addEventListener('gattserverdisconnected', onBluetoothDisconnected);
-        if (btn) btn.textContent = 'Terhubung ✅';
-        return true;
-    } catch (err) {
-        console.error('Koneksi printer:', err);
-        if (btn) btn.textContent = 'Hubungkan Printer';
-        if (err.name !== 'NotFoundError') alert('Gagal menghubungkan printer: ' + err.message);
-        return false;
-    } finally { isConnectingBle = false; }
+        bleDevice.addEventListener('gattserverdisconnected', onBluetoothDisconnected);
+        const srv = await bleDevice.gatt.connect();
+        let svc; try { svc = await srv.getPrimaryService('000018f0-0000-1000-8000-00805f9b34fb'); } catch(e) { svc = await srv.getPrimaryService('0000ff00-0000-1000-8000-00805f9b34fb'); }
+        const chars = await svc.getCharacteristics();
+        bleCharacteristic = chars.find(c => c.properties.write || c.properties.writeWithoutResponse);
+        if (bleCharacteristic) { btn.innerText = "Terhubung ✅"; isConnectingBle = false; return true; }
+        throw new Error("Tidak didukung.");
+    } catch (e) { btn.innerText = "Hubungkan Printer"; isConnectingBle = false; return false; }
 }
-function onBluetoothDisconnected() {
-    bleCharacteristic = null;
-    bleDevice = null;
-    const btn = document.getElementById('btn-bluetooth-txt');
-    if (btn) btn.textContent = 'Hubungkan Printer';
-}
-async function writeThermal(data) {
-    if (!bleCharacteristic || !bleDevice?.gatt?.connected) throw new Error('Printer Bluetooth terputus. Hubungkan ulang.');
-    const bytes = typeof data === 'string' ? new TextEncoder().encode(data) : data;
-    // BLE printer sering memakai MTU default 23 byte (payload 20 byte).
-    for (let offset = 0; offset < bytes.length; offset += 20) {
-        const chunk = bytes.slice(offset, offset + 20);
-        if (bleCharacteristic.properties.writeWithoutResponse) {
-            await bleCharacteristic.writeValueWithoutResponse(chunk);
-        } else if (bleCharacteristic.properties.write) {
-            await bleCharacteristic.writeValueWithResponse(chunk);
-        } else throw new Error('Karakteristik printer tidak mendukung write.');
-        await new Promise(resolve => setTimeout(resolve, 35));
-    }
-}
+function onBluetoothDisconnected() { bleCharacteristic = null; bleDevice = null; document.getElementById('btn-bluetooth-txt').innerText = "Hubungkan Printer"; }
 
 function openInvoiceModalById(trxId) {
     const trx = transactions.find(t => t.id === trxId);
@@ -1617,9 +1561,8 @@ async function printThermal(trxId) {
         try { const conn = await connectBluetooth(); if (!conn) return; } catch (e) { return; }
     }
     
-    if (thermalPrintBusy) return alert('Printer sedang mencetak nota lain.');
-    thermalPrintBusy = true;
-    try { 
+    try {
+        const enc = new TextEncoder('utf-8'); 
         const I = new Uint8Array([27, 64]); 
         const C = new Uint8Array([27, 97, 1]); 
         const L = new Uint8Array([27, 97, 0]); 
@@ -1627,7 +1570,12 @@ async function printThermal(trxId) {
         const B0 = new Uint8Array([27, 69, 0]); 
         const LF = new Uint8Array([10]);
         
-        const w = writeThermal;
+        const w = async (t) => { 
+            const b = typeof t === 'string' ? enc.encode(t) : t; 
+            if (bleCharacteristic.properties.writeWithoutResponse) await bleCharacteristic.writeValueWithoutResponse(b); 
+            else await bleCharacteristic.writeValue(b); 
+            await new Promise(r => setTimeout(r, 50)); 
+        };
         
         await w(I); await w(C); await w(B1); await w("LINK NEOMEAL\n"); 
         await w(B0); await w("--------------------------------\n"); 
@@ -1668,18 +1616,24 @@ async function printThermal(trxId) {
         await w("--------------------------------\n"); await w(C); await w(`"${trx.quote || 'Terima kasih'}"\n`); 
         for (let f = 0; f < 4; f++) await w(LF);
         
-    } catch (err) {
-        console.error(err); alert("Printer error: " + err.message);
-    } finally { thermalPrintBusy = false; }
+    } catch (err) { 
+        console.error(err); alert("Printer error. Pastikan printer menyala."); 
+    }
 }
 
 async function printRecapThermal(recap) {
     if (!bleCharacteristic || !bleDevice || !bleDevice.gatt.connected) throw new Error("Printer tidak terhubung");
     
+    const enc = new TextEncoder('utf-8'); 
     const I = new Uint8Array([27, 64]); const C = new Uint8Array([27, 97, 1]); const L = new Uint8Array([27, 97, 0]); 
     const B1 = new Uint8Array([27, 69, 1]); const B0 = new Uint8Array([27, 69, 0]); const LF = new Uint8Array([10]); 
     
-    const w = writeThermal;
+    const w = async (t) => { 
+        const b = typeof t === 'string' ? enc.encode(t) : t; 
+        if (bleCharacteristic.properties.writeWithoutResponse) await bleCharacteristic.writeValueWithoutResponse(b); 
+        else await bleCharacteristic.writeValue(b); 
+        await new Promise(r => setTimeout(r, 50)); 
+    };
     
     await w(I); await w(C); await w(B1); await w("REKAP CLOSING SHIFT\n"); await w("LINK NEOMEAL\n"); await w(B0); 
     await w("================================\n"); await w(L);
@@ -1773,14 +1727,7 @@ async function handleModalCheckout() {
     }
 
     const activeCashier = document.getElementById('active-cashier-name') ? document.getElementById('active-cashier-name').innerText : "Kasir";
-    const totals = getCartPaymentTotals();
-    if (!totals) return alert('Diskon harus antara 0 dan 100%.');
-    const total = totals.total;
-    const method = document.getElementById('pay-method').value;
-    const cashEl = document.getElementById('pay-cash');
-    const cash = method === 'Tunai' ? Number(cashEl.value) : total;
-    if (method === 'Tunai' && cashEl.value.trim() === '') return alert('Masukkan uang bayar.');
-    if (!Number.isFinite(cash) || cash < total) return alert('Uang bayar kurang dari total tagihan.');
+    const total = parseInt(document.getElementById('txt-total-modal').innerText.replace(/[^0-9]/g, '')) || 0;
     
     const newTrx = {
         id: generateNextTrxId(),
@@ -1789,9 +1736,9 @@ async function handleModalCheckout() {
         customer: customerName,
         items: [...cart],
         total: total,
-        discount: totals.discount,
-        cash,
-        change: cash - total,
+        discount: parseInt(document.getElementById('pay-discount-percent').value) || 0,
+        cash: parseInt(document.getElementById('pay-cash').value) || 0,
+        change: parseInt(document.getElementById('txt-change').innerText.replace(/[^0-9]/g, '')) || 0,
         method: document.getElementById('pay-method').value,
         quote: getRandomQuote(),
         orderType: currentOrderType
