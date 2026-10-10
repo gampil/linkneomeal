@@ -897,6 +897,16 @@ function sendWaPromo(phone, name) {
     window.open(`https://wa.me/${formattedPhone}?text=${encodeURIComponent(message)}`, '_blank');
 }
 
+// Satu sumber perhitungan diskon untuk tampilan dan semua jalur checkout.
+function getCartPaymentTotals() {
+    const subtotal = cart.reduce((sum, item) => sum + (Number(item.price) || 0) * (Number(item.qty) || 0), 0);
+    const el = document.getElementById('pay-discount-percent');
+    const percent = el && el.value !== '' ? Number(el.value) : 0;
+    if (!Number.isFinite(percent) || percent < 0 || percent > 100) return null;
+    const discount = Math.round(subtotal * percent / 100);
+    return { subtotal, percent, discount, total: Math.max(0, subtotal - discount) };
+}
+
 function renderCart() {
     const container = document.getElementById('cart-items');
     if (!container) return;
@@ -937,21 +947,18 @@ function renderCart() {
             </div>`;
     });
 
-    const discountInput = document.getElementById('pay-discount-percent');
-    let discountCalculated = 0;
-    if (discountInput) {
-        const discVal = parseInt(discountInput.value) || 0;
-        if (discVal > 0 && discVal <= 100) {
-            discountCalculated = Math.round((discVal / 100) * subtotal);
-            if(document.getElementById('txt-discount-display')) document.getElementById('txt-discount-display').innerText = `- Rp ${discountCalculated.toLocaleString('id-ID')}`;
-            if(document.getElementById('div-discount')) document.getElementById('div-discount').classList.remove('hidden');
-        } else { 
-            if(document.getElementById('div-discount')) document.getElementById('div-discount').classList.add('hidden'); 
-        }
-    }
-    
-    const finalTotal = Math.max(0, subtotal - discountCalculated);
-    
+    const totals = getCartPaymentTotals();
+    const subtotalEl = document.getElementById('pay-discount-percent');
+    if (!totals) {
+        if (subtotalEl) subtotalEl.setCustomValidity('Diskon harus antara 0 sampai 100 persen');
+    } else if (subtotalEl) subtotalEl.setCustomValidity('');
+    const discountCalculated = totals ? totals.discount : 0;
+    const finalTotal = totals ? totals.total : subtotal;
+    const discountRow = document.getElementById('div-discount');
+    if (discountRow) discountRow.classList.toggle('hidden', discountCalculated <= 0);
+    const discountLabel = document.getElementById('txt-discount-display');
+    if (discountLabel) discountLabel.innerText = `- Rp ${discountCalculated.toLocaleString('id-ID')}`;
+
     if (document.getElementById('txt-subtotal')) document.getElementById('txt-subtotal').innerText = `Rp ${subtotal.toLocaleString('id-ID')}`;
     if (document.getElementById('txt-subtotal-modal')) document.getElementById('txt-subtotal-modal').innerText = `Rp ${subtotal.toLocaleString('id-ID')}`;
     if (document.getElementById('txt-total')) document.getElementById('txt-total').innerText = `Rp ${finalTotal.toLocaleString('id-ID')}`;
@@ -1036,7 +1043,9 @@ function generateNextTrxId() {
 async function processCheckout() {
     if (cart.length === 0) return alert('Keranjang masih kosong! Silakan pilih produk terlebih dahulu.');
 
-    const total = parseInt(document.getElementById('txt-total').innerText.replace(/[^0-9]/g, '')) || 0;
+    const totals = getCartPaymentTotals();
+    if (!totals) return alert('Diskon harus antara 0 dan 100%.');
+    const total = totals.total;
     const method = document.getElementById('pay-method').value;
     const cashInputEl = document.getElementById('pay-cash');
     const cashInputStr = cashInputEl.value.trim();
@@ -1070,10 +1079,7 @@ async function processCheckout() {
         if (matchedTrx) phone = matchedTrx.phone;
     }
     
-    let subtotal = cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
-    const discountInput = parseInt(document.getElementById('pay-discount-percent').value) || 0;
-    let discount = 0; 
-    if (discountInput > 0 && discountInput <= 100) discount = Math.round((discountInput / 100) * subtotal);
+    const { discount } = totals;
 
     const newTrxId = generateNextTrxId();
 
@@ -1450,26 +1456,164 @@ function exportToExcel() {
 }
 
 // ------------------------------------------------------------------------
-// BLUETOOTH PRINTING
+// BLUETOOTH PRINTING - BLE GATT; prioritas UUID demo WebBluetoothCG
+// Referensi: https://webbluetoothcg.github.io/demos/bluetooth-printer/
+// Printer Bluetooth Classic/SPP tidak didukung oleh Web Bluetooth API.
 // ------------------------------------------------------------------------
-async function connectBluetooth() {
-    if (isConnectingBle) return; isConnectingBle = true;
-    const btn = document.getElementById('btn-bluetooth-txt'); btn.innerHTML = `<i class="fa-solid fa-spinner animate-spin"></i>...`;
-    try {
-        bleDevice = await navigator.bluetooth.requestDevice({
-            filters: [{ services: ['000018f0-0000-1000-8000-00805f9b34fb'] }, { namePrefix: 'RPP' }, { namePrefix: 'MTP' }, { namePrefix: 'PT' }],
-            optionalServices: ['000018f0-0000-1000-8000-00805f9b34fb', '0000ff00-0000-1000-8000-00805f9b34fb']
-        });
-        bleDevice.addEventListener('gattserverdisconnected', onBluetoothDisconnected);
-        const srv = await bleDevice.gatt.connect();
-        let svc; try { svc = await srv.getPrimaryService('000018f0-0000-1000-8000-00805f9b34fb'); } catch(e) { svc = await srv.getPrimaryService('0000ff00-0000-1000-8000-00805f9b34fb'); }
-        const chars = await svc.getCharacteristics();
-        bleCharacteristic = chars.find(c => c.properties.write || c.properties.writeWithoutResponse);
-        if (bleCharacteristic) { btn.innerText = "Terhubung ✅"; isConnectingBle = false; return true; }
-        throw new Error("Tidak didukung.");
-    } catch (e) { btn.innerText = "Hubungkan Printer"; isConnectingBle = false; return false; }
+const BLE_PRINT_PROFILES = [
+    { service: '000018f0-0000-1000-8000-00805f9b34fb', writes: ['00002af1-0000-1000-8000-00805f9b34fb'] },
+    { service: '0000ff00-0000-1000-8000-00805f9b34fb', writes: ['0000ff02-0000-1000-8000-00805f9b34fb', '0000ff01-0000-1000-8000-00805f9b34fb'] },
+    { service: '0000ffe0-0000-1000-8000-00805f9b34fb', writes: ['0000ffe1-0000-1000-8000-00805f9b34fb'] },
+    { service: '0000ffe5-0000-1000-8000-00805f9b34fb', writes: ['0000ffe9-0000-1000-8000-00805f9b34fb'] },
+    { service: '0000ae30-0000-1000-8000-00805f9b34fb', writes: ['0000ae01-0000-1000-8000-00805f9b34fb', '0000ae02-0000-1000-8000-00805f9b34fb'] },
+    { service: '49535343-fe7d-4ae5-8fa9-9fafd205e455', writes: ['49535343-8841-43f4-a8d4-ecbe34729bb3'] }
+];
+const BLE_PRINT_SERVICES = BLE_PRINT_PROFILES.map(profile => profile.service);
+let thermalPrintBusy = false;
+
+function bluetoothErrorMessage(error) {
+    const reason = (error && error.message) ? error.message : String(error || 'Tidak diketahui');
+    if (!window.isSecureContext) return 'Aplikasi perlu dibuka melalui HTTPS agar Web Bluetooth dapat digunakan.';
+    if (error && (error.name === 'SecurityError' || error.name === 'NotAllowedError'))
+        return 'Izin Bluetooth ditolak atau dialog pairing tidak dibuka dari tombol. Gunakan Chrome/Edge melalui HTTPS, lalu klik tombol Printer kembali. (' + reason + ')';
+    if (error && error.name === 'NotSupportedError')
+        return 'Browser atau perangkat tidak mendukung Web Bluetooth BLE. (' + reason + ')';
+    if (error && error.name === 'NetworkError')
+        return 'Koneksi GATT gagal atau printer terputus. Pastikan printer menyala, dekat perangkat, dan tidak dipakai aplikasi lain. (' + reason + ')';
+    return reason;
 }
-function onBluetoothDisconnected() { bleCharacteristic = null; bleDevice = null; document.getElementById('btn-bluetooth-txt').innerText = "Hubungkan Printer"; }
+
+function onBluetoothDisconnected(event) {
+    // Abaikan notifikasi disconnect milik printer lama ketika berganti perangkat.
+    if (event && bleDevice && event.target !== bleDevice) return;
+    bleCharacteristic = null;
+    bleDevice = null;
+    const btn = document.getElementById('btn-bluetooth-txt');
+    if (btn) btn.textContent = 'Hubungkan Printer';
+}
+
+async function connectBluetooth() {
+    if (!window.isSecureContext || !navigator.bluetooth) {
+        alert('Web Bluetooth memerlukan HTTPS dan Chrome/Edge yang mendukung BLE. Printer Bluetooth Classic/SPP tidak dapat digunakan langsung dari browser.');
+        return false;
+    }
+    if (isConnectingBle) return false;
+    isConnectingBle = true;
+    const btn = document.getElementById('btn-bluetooth-txt');
+    if (btn) btn.textContent = 'Menghubungkan...';
+    let device = null;
+    try {
+        // requestDevice wajib dieksekusi langsung dari klik/tap pengguna.
+        // optionalServices memberi izin akses GATT untuk setiap profil yang didukung.
+        device = await navigator.bluetooth.requestDevice({
+            acceptAllDevices: true,
+            optionalServices: BLE_PRINT_SERVICES
+        });
+        const server = await device.gatt.connect();
+        let characteristic = null;
+        let usedService = null;
+        for (const profile of BLE_PRINT_PROFILES) {
+            let service;
+            try {
+                service = await server.getPrimaryService(profile.service);
+            } catch (err) {
+                continue; // Printer tidak mempunyai layanan ini.
+            }
+            // UUID khusus didahulukan: 18F0 / 2AF1 sesuai demo referensi.
+            for (const uuid of profile.writes) {
+                try {
+                    const candidate = await service.getCharacteristic(uuid);
+                    if (candidate.properties.write || candidate.properties.writeWithoutResponse) {
+                        characteristic = candidate;
+                        usedService = profile.service;
+                        break;
+                    }
+                } catch (err) { /* karakteristik UUID ini tidak tersedia */ }
+            }
+            if (!characteristic) {
+                // Fallback hanya di dalam service printer yang sudah dikenali.
+                try {
+                    const candidates = await service.getCharacteristics();
+                    characteristic = candidates.find(c => c.properties.write || c.properties.writeWithoutResponse) || null;
+                    if (characteristic) usedService = profile.service;
+                } catch (err) {
+                    console.warn('[Printer BLE] Tidak dapat membaca characteristic pada service', profile.service, err);
+                }
+            }
+            if (characteristic) break;
+        }
+        if (!characteristic) {
+            throw new Error('Perangkat "' + (device.name || 'tanpa nama') + '" tidak memiliki service/characteristic cetak BLE yang dikenali. Demo referensi memerlukan 18F0/2AF1. Jika printer memakai Bluetooth Classic/SPP, Web Bluetooth tidak dapat mencetaknya.');
+        }
+        // Hapus handle lama hanya setelah jalur printer baru terverifikasi.
+        const oldDevice = bleDevice;
+        bleDevice = device;
+        bleCharacteristic = characteristic;
+        device.addEventListener('gattserverdisconnected', onBluetoothDisconnected);
+        if (oldDevice && oldDevice !== device && oldDevice.gatt && oldDevice.gatt.connected) {
+            oldDevice.gatt.disconnect();
+        }
+        console.info('[Printer BLE] Terhubung:', device.name || device.id, 'Service:', usedService, 'Characteristic:', characteristic.uuid);
+        if (btn) btn.textContent = 'Terhubung ✅';
+        return true;
+    } catch (err) {
+        console.error('[Printer BLE] Koneksi gagal:', err);
+        if (device && device.gatt && device.gatt.connected && device !== bleDevice) {
+            try { device.gatt.disconnect(); } catch (_) { /* abaikan */ }
+        }
+        if (btn) btn.textContent = bleDevice && bleDevice.gatt && bleDevice.gatt.connected ? 'Terhubung ✅' : 'Hubungkan Printer';
+        // Pembatalan pemilihan perangkat bukan kerusakan aplikasi.
+        if (!err || err.name !== 'NotFoundError') alert('Gagal menghubungkan printer: ' + bluetoothErrorMessage(err));
+        return false;
+    } finally {
+        isConnectingBle = false;
+    }
+}
+
+async function writeThermal(data) {
+    if (!bleCharacteristic || !bleDevice || !bleDevice.gatt || !bleDevice.gatt.connected)
+        throw new Error('Printer Bluetooth terputus. Tekan tombol Printer untuk menyambungkan kembali.');
+    const bytes = typeof data === 'string' ? new TextEncoder().encode(data) : data;
+    // ATT MTU 23 pada BLE memberi payload aman 20 byte. Tulisan dan perintah
+    // ESC/POS sama-sama melewati antrean ini agar tidak ada write yang bertabrakan.
+    for (let offset = 0; offset < bytes.length; offset += 20) {
+        if (!bleDevice.gatt.connected) throw new Error('Printer terputus ketika mencetak.');
+        const chunk = bytes.slice(offset, offset + 20);
+        if (bleCharacteristic.properties.write && typeof bleCharacteristic.writeValueWithResponse === 'function') {
+            await bleCharacteristic.writeValueWithResponse(chunk);
+        } else if (bleCharacteristic.properties.writeWithoutResponse && typeof bleCharacteristic.writeValueWithoutResponse === 'function') {
+            await bleCharacteristic.writeValueWithoutResponse(chunk);
+        } else if (typeof bleCharacteristic.writeValue === 'function') {
+            // Fallback Chromium versi lama / kompatibilitas demo WebBluetoothCG.
+            await bleCharacteristic.writeValue(chunk);
+        } else {
+            throw new Error('Karakteristik BLE printer tidak mendukung penulisan data.');
+        }
+        await new Promise(resolve => setTimeout(resolve, 45));
+    }
+}
+
+// Bisa dijalankan dari console Chrome setelah tombol Printer berhasil terhubung.
+// Ini menguji jalur GATT dan cetak tanpa membuat transaksi POS baru.
+async function testBluetoothPrinter() {
+    if (thermalPrintBusy) return alert('Printer sedang mencetak, coba setelah selesai.');
+    if (!bleDevice || !bleDevice.gatt.connected || !bleCharacteristic) {
+        return alert('Hubungkan printer dari tombol Printer terlebih dahulu.');
+    }
+    thermalPrintBusy = true;
+    try {
+        await writeThermal(new Uint8Array([27, 64, 27, 97, 1]));
+        await writeThermal('LINK NEOMEAL\nTEST PRINT BLUETOOTH\n');
+        await writeThermal(new Uint8Array([10, 10, 10]));
+        return true;
+    } catch (error) {
+        console.error('[Printer BLE] Test print gagal:', error);
+        alert('Test printer gagal: ' + bluetoothErrorMessage(error));
+        return false;
+    } finally {
+        thermalPrintBusy = false;
+    }
+}
 
 function openInvoiceModalById(trxId) {
     const trx = transactions.find(t => t.id === trxId);
@@ -1539,9 +1683,12 @@ function openInvoiceModal(trx) {
             const originalText = btnPrint.innerHTML;
             btnPrint.innerHTML = `<i class="fa-solid fa-spinner animate-spin"></i> Sedang Mencetak...`;
             btnPrint.disabled = true;
-            await printThermal(trx.id); 
-            btnPrint.innerHTML = originalText;
-            btnPrint.disabled = false;
+            try {
+                await printThermal(trx.id);
+            } finally {
+                btnPrint.innerHTML = originalText;
+                btnPrint.disabled = false;
+            }
         };
     }
     document.getElementById('invoice-modal').classList.remove('hidden');
@@ -1557,12 +1704,14 @@ async function printThermal(trxId) {
     
     if (!navigator.bluetooth) return alert("Peringatan: Browser tidak mendukung Bluetooth Web.");
     
-    if (!bleCharacteristic || !bleDevice || !bleDevice.gatt.connected) { 
-        try { const conn = await connectBluetooth(); if (!conn) return; } catch (e) { return; }
-    }
-    
+    if (thermalPrintBusy) return alert('Printer sedang mencetak nota lain.');
+    thermalPrintBusy = true;
     try {
-        const enc = new TextEncoder('utf-8'); 
+        if (!bleCharacteristic || !bleDevice || !bleDevice.gatt.connected) {
+            // Tetap dalam konteks klik pengguna agar dialog pairing bisa terbuka.
+            const connected = await connectBluetooth();
+            if (!connected) return;
+        }
         const I = new Uint8Array([27, 64]); 
         const C = new Uint8Array([27, 97, 1]); 
         const L = new Uint8Array([27, 97, 0]); 
@@ -1570,12 +1719,7 @@ async function printThermal(trxId) {
         const B0 = new Uint8Array([27, 69, 0]); 
         const LF = new Uint8Array([10]);
         
-        const w = async (t) => { 
-            const b = typeof t === 'string' ? enc.encode(t) : t; 
-            if (bleCharacteristic.properties.writeWithoutResponse) await bleCharacteristic.writeValueWithoutResponse(b); 
-            else await bleCharacteristic.writeValue(b); 
-            await new Promise(r => setTimeout(r, 50)); 
-        };
+        const w = writeThermal;
         
         await w(I); await w(C); await w(B1); await w("LINK NEOMEAL\n"); 
         await w(B0); await w("--------------------------------\n"); 
@@ -1616,24 +1760,18 @@ async function printThermal(trxId) {
         await w("--------------------------------\n"); await w(C); await w(`"${trx.quote || 'Terima kasih'}"\n`); 
         for (let f = 0; f < 4; f++) await w(LF);
         
-    } catch (err) { 
-        console.error(err); alert("Printer error. Pastikan printer menyala."); 
-    }
+    } catch (err) {
+        console.error("[Printer BLE] Cetak nota gagal:", err); alert("Printer error: " + bluetoothErrorMessage(err));
+    } finally { thermalPrintBusy = false; }
 }
 
 async function printRecapThermal(recap) {
     if (!bleCharacteristic || !bleDevice || !bleDevice.gatt.connected) throw new Error("Printer tidak terhubung");
     
-    const enc = new TextEncoder('utf-8'); 
     const I = new Uint8Array([27, 64]); const C = new Uint8Array([27, 97, 1]); const L = new Uint8Array([27, 97, 0]); 
     const B1 = new Uint8Array([27, 69, 1]); const B0 = new Uint8Array([27, 69, 0]); const LF = new Uint8Array([10]); 
     
-    const w = async (t) => { 
-        const b = typeof t === 'string' ? enc.encode(t) : t; 
-        if (bleCharacteristic.properties.writeWithoutResponse) await bleCharacteristic.writeValueWithoutResponse(b); 
-        else await bleCharacteristic.writeValue(b); 
-        await new Promise(r => setTimeout(r, 50)); 
-    };
+    const w = writeThermal;
     
     await w(I); await w(C); await w(B1); await w("REKAP CLOSING SHIFT\n"); await w("LINK NEOMEAL\n"); await w(B0); 
     await w("================================\n"); await w(L);
@@ -1655,6 +1793,8 @@ async function printRecapThermal(recap) {
 }
 
 async function manualPrintClosing() {
+    if (thermalPrintBusy) return alert('Printer sedang mencetak nota lain.');
+    thermalPrintBusy = true;
     try {
         const recap = calculateShiftRecap();
         if (!bleCharacteristic || !bleDevice || !bleDevice.gatt.connected) { 
@@ -1678,9 +1818,11 @@ async function manualPrintClosing() {
         if (btn) { btn.innerHTML = originalText; btn.disabled = false; }
     } catch (e) {
         console.error("Gagal cetak rekap:", e);
-        alert("Gagal mencetak. Coba muat ulang (Refresh) halaman dan pastikan printer menyala.");
+        alert("Gagal mencetak rekap: " + bluetoothErrorMessage(e));
         const btn = document.getElementById('btn-print-closing');
         if (btn) { btn.innerHTML = `<i class="fa-solid fa-print"></i> Print Rekap`; btn.disabled = false; }
+    } finally {
+        thermalPrintBusy = false;
     }
 }
 
@@ -1727,7 +1869,14 @@ async function handleModalCheckout() {
     }
 
     const activeCashier = document.getElementById('active-cashier-name') ? document.getElementById('active-cashier-name').innerText : "Kasir";
-    const total = parseInt(document.getElementById('txt-total-modal').innerText.replace(/[^0-9]/g, '')) || 0;
+    const totals = getCartPaymentTotals();
+    if (!totals) return alert('Diskon harus antara 0 dan 100%.');
+    const total = totals.total;
+    const method = document.getElementById('pay-method').value;
+    const cashEl = document.getElementById('pay-cash');
+    const cash = method === 'Tunai' ? Number(cashEl.value) : total;
+    if (method === 'Tunai' && cashEl.value.trim() === '') return alert('Masukkan uang bayar.');
+    if (!Number.isFinite(cash) || cash < total) return alert('Uang bayar kurang dari total tagihan.');
     
     const newTrx = {
         id: generateNextTrxId(),
@@ -1736,9 +1885,9 @@ async function handleModalCheckout() {
         customer: customerName,
         items: [...cart],
         total: total,
-        discount: parseInt(document.getElementById('pay-discount-percent').value) || 0,
-        cash: parseInt(document.getElementById('pay-cash').value) || 0,
-        change: parseInt(document.getElementById('txt-change').innerText.replace(/[^0-9]/g, '')) || 0,
+        discount: totals.discount,
+        cash,
+        change: cash - total,
         method: document.getElementById('pay-method').value,
         quote: getRandomQuote(),
         orderType: currentOrderType

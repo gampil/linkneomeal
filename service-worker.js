@@ -1,4 +1,4 @@
-const CACHE_NAME = 'linkneomeal-cache-v1';
+const CACHE_NAME = 'linkneomeal-cache-v3-ble-printer-20261010';
 const assetsToCache = [
   './',
   './index.html',
@@ -13,9 +13,13 @@ const assetsToCache = [
 // Install Service Worker & Simpan Aset Statis ke Cache
 self.addEventListener('install', event => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then(cache => {
-      return cache.addAll(assetsToCache);
-    })
+    caches.open(CACHE_NAME)
+      .then(async cache => {
+        // Aset lokal wajib; kegagalan salah satu CDN tidak boleh menggagalkan update.
+        await cache.addAll(['./', './index.html', './app-pos.js']);
+        await Promise.allSettled(assetsToCache.slice(3).map(asset => cache.add(asset)));
+      })
+      .then(() => self.skipWaiting())
   );
 });
 
@@ -25,12 +29,12 @@ self.addEventListener('activate', event => {
     caches.keys().then(keys => {
       return Promise.all(
         keys.map(key => {
-          if (key !== CACHE_NAME) {
+          if (key.startsWith('linkneomeal-cache-') && key !== CACHE_NAME) {
             return caches.delete(key);
           }
         })
       );
-    })
+    }).then(() => self.clients.claim())
   );
 });
 
@@ -42,9 +46,22 @@ self.addEventListener('fetch', event => {
     return;
   }
 
+  // Prioritaskan jaringan untuk kode JS utama agar perbaikan printer tidak
+  // tertahan oleh file lama pada cache perangkat kasir.
+  const url = new URL(event.request.url);
+  if (url.origin === self.location.origin && url.pathname.endsWith('/app-pos.js')) {
+    event.respondWith(
+      fetch(event.request).then(response => {
+        if (response.ok) {
+          const copy = response.clone();
+          caches.open(CACHE_NAME).then(cache => cache.put(event.request, copy));
+        }
+        return response;
+      }).catch(() => caches.match(event.request))
+    );
+    return;
+  }
   event.respondWith(
-    caches.match(event.request).then(cachedResponse => {
-      return cachedResponse || fetch(event.request);
-    })
+    caches.match(event.request).then(cachedResponse => cachedResponse || fetch(event.request))
   );
 });
