@@ -1,4 +1,4 @@
-const CACHE_NAME = 'linkneomeal-cache-v3-ble-printer-20261010';
+const CACHE_NAME = 'linkneomeal-cache-v4-percent-discount-20261010';
 const assetsToCache = [
   './',
   './index.html',

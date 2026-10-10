@@ -907,6 +907,26 @@ function getCartPaymentTotals() {
     return { subtotal, percent, discount, total: Math.max(0, subtotal - discount) };
 }
 
+// Penyimpanan lama memakai discount (nominal Rp), sehingga field baru discountPercent
+// menyimpan persen asli tanpa mengubah laporan keuangan / transaksi historis.
+function getTransactionDiscountPercent(trx, subtotal) {
+    const recordedPercent = trx.discountPercent;
+    if (recordedPercent !== undefined && recordedPercent !== null && recordedPercent !== '') {
+        const p = Number(recordedPercent);
+        if (Number.isFinite(p) && p >= 0 && p <= 100) return p;
+    }
+    // Backward-compatible untuk nota lama yang belum memiliki discountPercent.
+    if (subtotal === undefined) {
+        subtotal = (Array.isArray(trx.items) ? trx.items : []).reduce(
+            (sum, i) => sum + (Number(i.price) || 0) * (Number(i.qty) || 0), 0);
+    }
+    return subtotal > 0 ? Math.min(100, Math.max(0, Math.round(((Number(trx.discount) || 0) / subtotal) * 10000) / 100)) : 0;
+}
+
+function formatDiscountPercent(percent) {
+    return Number(percent).toLocaleString('id-ID', { maximumFractionDigits: 2 });
+}
+
 function renderCart() {
     const container = document.getElementById('cart-items');
     if (!container) return;
@@ -956,6 +976,8 @@ function renderCart() {
     const finalTotal = totals ? totals.total : subtotal;
     const discountRow = document.getElementById('div-discount');
     if (discountRow) discountRow.classList.toggle('hidden', discountCalculated <= 0);
+    const discountPercentLabel = document.getElementById('txt-discount-percent-label');
+    if (discountPercentLabel) discountPercentLabel.innerText = `Diskon (${formatDiscountPercent(totals ? totals.percent : 0)}%):`;
     const discountLabel = document.getElementById('txt-discount-display');
     if (discountLabel) discountLabel.innerText = `- Rp ${discountCalculated.toLocaleString('id-ID')}`;
 
@@ -1091,7 +1113,8 @@ async function processCheckout() {
         method, 
         orderType: currentOrderType,
         items: [...cart], 
-        discount, 
+        discount,
+        discountPercent: totals.percent,
         total, 
         cash, 
         change: cash - total, 
@@ -1177,7 +1200,7 @@ function renderStrukList() {
         const itemsArray = Array.isArray(t.items) ? t.items : [];
         itemsArray.forEach(i => subtotal += (i.price * i.qty));
         
-        let discountPercent = subtotal > 0 && t.discount > 0 ? Math.round((t.discount / subtotal) * 100) : 0;
+        const discountPercent = getTransactionDiscountPercent(t, subtotal);
         
         // Rincian Item (Tanpa background/div tambahan)
         let itemsHtml = itemsArray.map(i => `
@@ -1191,7 +1214,7 @@ function renderStrukList() {
             
         const discHtml = t.discount > 0 ? `
             <div class="flex justify-between items-center text-xs text-red-500 mt-2 border-t border-dashed border-gray-200 pt-2">
-                <span class="font-bold">Diskon (${discountPercent}%)</span>
+                <span class="font-bold">Diskon (${formatDiscountPercent(discountPercent)}%)</span>
                 <span class="font-black">- Rp ${t.discount.toLocaleString('id-ID')}</span>
             </div>` : '';
             
@@ -1448,7 +1471,8 @@ function exportToExcel() {
     
     const rows = filteredTrx.map(t => ({
         "ID Transaksi": t.id, "Waktu": t.date, "Nama Pelanggan": t.customer, "No WA": t.phone || '-', "Metode Bayar": t.method,
-        "Rincian Item": (Array.isArray(t.items) ? t.items : []).map(i => `${i.name} (${i.qty}x)`).join(', '), "Diskon (Rp)": parseInt(t.discount) || 0, "Omset Bersih (Rp)": parseInt(t.total) || 0
+        "Rincian Item": (Array.isArray(t.items) ? t.items : []).map(i => `${i.name} (${i.qty}x)`).join(', '),
+        "Diskon (%)": getTransactionDiscountPercent(t), "Diskon (Rp)": parseInt(t.discount) || 0, "Omset Bersih (Rp)": parseInt(t.total) || 0
     }));
     
     const ws = XLSX.utils.json_to_sheet(rows); const wb = XLSX.utils.book_new();
@@ -1652,7 +1676,7 @@ function openInvoiceModal(trx) {
     html += `<div class="flex justify-between text-[11px] text-gray-600"><span>Subtotal</span><span>Rp ${sub.toLocaleString('id-ID')}</span></div>`;
     
     if (trx.discount > 0) {
-        html += `<div class="flex justify-between text-[11px] text-red-600 font-bold"><span>Diskon</span><span>-Rp ${trx.discount.toLocaleString('id-ID')}</span></div>`;
+        html += `<div class="flex justify-between text-[11px] text-red-600 font-bold"><span>Diskon (${formatDiscountPercent(getTransactionDiscountPercent(trx, sub))}%)</span><span>-Rp ${Number(trx.discount).toLocaleString('id-ID')}</span></div>`;
     }
     
     html += `
@@ -1743,7 +1767,8 @@ async function printThermal(trxId) {
         
         if (trx.discount > 0) {
             let dTxt = `-Rp ${trx.discount.toLocaleString('id-ID')}`;
-            await w("Diskon" + " ".repeat(32 - (6 + dTxt.length)) + dTxt + "\n");
+            const discLabel = `Diskon (${formatDiscountPercent(getTransactionDiscountPercent(trx, sub))}%)`;
+            await w(discLabel + " ".repeat(Math.max(1, 32 - (discLabel.length + dTxt.length))) + dTxt + "\n");
         }
         
         await w(B1); 
@@ -1886,6 +1911,7 @@ async function handleModalCheckout() {
         items: [...cart],
         total: total,
         discount: totals.discount,
+        discountPercent: totals.percent,
         cash,
         change: cash - total,
         method: document.getElementById('pay-method').value,
