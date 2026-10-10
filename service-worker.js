@@ -1,8 +1,8 @@
-const CACHE_NAME = 'linkneomeal-cache-v4-percent-discount-20261010';
+const CACHE_NAME = 'linkneomeal-cache-v5-nota-percent-20261010';
 const assetsToCache = [
   './',
   './index.html',
-  './app-pos.js',
+  './app-pos.js?v=20261010-nota-percent-v5',
   'https://cdn.tailwindcss.com',
   'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css',
   'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js',
@@ -16,7 +16,7 @@ self.addEventListener('install', event => {
     caches.open(CACHE_NAME)
       .then(async cache => {
         // Aset lokal wajib; kegagalan salah satu CDN tidak boleh menggagalkan update.
-        await cache.addAll(['./', './index.html', './app-pos.js']);
+        await cache.addAll(['./', './index.html', './app-pos.js?v=20261010-nota-percent-v5']);
         await Promise.allSettled(assetsToCache.slice(3).map(asset => cache.add(asset)));
       })
       .then(() => self.skipWaiting())
@@ -46,10 +46,13 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  // Prioritaskan jaringan untuk kode JS utama agar perbaikan printer tidak
-  // tertahan oleh file lama pada cache perangkat kasir.
+  // HTML (termasuk halaman utama PWA) dan app-pos.js selalu mencoba jaringan
+  // dahulu, agar preview nota & printer tidak menjalankan file cache versi lama.
+  // Ketika offline tetap bisa memakai versi terakhir yang tersimpan.
   const url = new URL(event.request.url);
-  if (url.origin === self.location.origin && url.pathname.endsWith('/app-pos.js')) {
+  const isAppScript = url.origin === self.location.origin && url.pathname.endsWith('/app-pos.js');
+  const isAppDocument = url.origin === self.location.origin && (event.request.mode === 'navigate' || url.pathname.endsWith('/index.html'));
+  if (isAppScript || isAppDocument) {
     event.respondWith(
       fetch(event.request).then(response => {
         if (response.ok) {
@@ -57,7 +60,7 @@ self.addEventListener('fetch', event => {
           caches.open(CACHE_NAME).then(cache => cache.put(event.request, copy));
         }
         return response;
-      }).catch(() => caches.match(event.request))
+      }).catch(async () => (await caches.match(event.request)) || (isAppDocument ? await caches.match('./index.html') : undefined))
     );
     return;
   }

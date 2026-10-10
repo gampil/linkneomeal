@@ -927,6 +927,29 @@ function formatDiscountPercent(percent) {
     return Number(percent).toLocaleString('id-ID', { maximumFractionDigits: 2 });
 }
 
+// Digunakan bersama oleh riwayat, preview, dan nota termal.
+// discount adalah nilai rupiah yang tersimpan; discountPercent adalah persen input.
+function getReceiptDiscountInfo(trx, subtotal) {
+    const percent = getTransactionDiscountPercent(trx, subtotal);
+    const nominal = Number(trx.discount);
+    const amount = Number.isFinite(nominal) ? Math.max(0, nominal) : 0;
+    return {
+        percent,
+        amount,
+        visible: percent > 0 || amount > 0,
+        label: `Diskon (${formatDiscountPercent(percent)}%)`
+    };
+}
+
+// Satu baris ESC/POS printer 58mm (~32 karakter). Hindari potongan teks
+// apabila nilai diskon terlalu panjang untuk ditaruh dalam satu baris.
+function formatThermalAmountLine(label, amount, width = 32) {
+    if (label.length + amount.length >= width) {
+        return `${label}\n${amount.padStart(width)}\n`;
+    }
+    return `${label}${' '.repeat(width - label.length - amount.length)}${amount}\n`;
+}
+
 function renderCart() {
     const container = document.getElementById('cart-items');
     if (!container) return;
@@ -1200,7 +1223,7 @@ function renderStrukList() {
         const itemsArray = Array.isArray(t.items) ? t.items : [];
         itemsArray.forEach(i => subtotal += (i.price * i.qty));
         
-        const discountPercent = getTransactionDiscountPercent(t, subtotal);
+        const receiptDiscount = getReceiptDiscountInfo(t, subtotal);
         
         // Rincian Item (Tanpa background/div tambahan)
         let itemsHtml = itemsArray.map(i => `
@@ -1212,10 +1235,10 @@ function renderStrukList() {
                 <span class="font-bold text-gray-800 mt-0.5">Rp ${(i.price * i.qty).toLocaleString('id-ID')}</span>
             </div>`).join('');
             
-        const discHtml = t.discount > 0 ? `
+        const discHtml = receiptDiscount.visible ? `
             <div class="flex justify-between items-center text-xs text-red-500 mt-2 border-t border-dashed border-gray-200 pt-2">
-                <span class="font-bold">Diskon (${formatDiscountPercent(discountPercent)}%)</span>
-                <span class="font-black">- Rp ${t.discount.toLocaleString('id-ID')}</span>
+                <span class="font-bold">${receiptDiscount.label}</span>
+                <span class="font-black">- Rp ${receiptDiscount.amount.toLocaleString('id-ID')}</span>
             </div>` : '';
             
         // Warna lencana (badge) disesuaikan tipe pembayaran
@@ -1674,9 +1697,10 @@ function openInvoiceModal(trx) {
     
     html += `<div class="border-t border-dashed border-gray-400 my-2"></div>`;
     html += `<div class="flex justify-between text-[11px] text-gray-600"><span>Subtotal</span><span>Rp ${sub.toLocaleString('id-ID')}</span></div>`;
-    
-    if (trx.discount > 0) {
-        html += `<div class="flex justify-between text-[11px] text-red-600 font-bold"><span>Diskon (${formatDiscountPercent(getTransactionDiscountPercent(trx, sub))}%)</span><span>-Rp ${Number(trx.discount).toLocaleString('id-ID')}</span></div>`;
+
+    const receiptDiscount = getReceiptDiscountInfo(trx, sub);
+    if (receiptDiscount.visible) {
+        html += `<div class="flex justify-between text-[11px] text-red-600 font-bold"><span>${receiptDiscount.label}</span><span>-Rp ${receiptDiscount.amount.toLocaleString('id-ID')}</span></div>`;
     }
     
     html += `
@@ -1708,7 +1732,7 @@ function openInvoiceModal(trx) {
             btnPrint.innerHTML = `<i class="fa-solid fa-spinner animate-spin"></i> Sedang Mencetak...`;
             btnPrint.disabled = true;
             try {
-                await printThermal(trx.id);
+                await printThermal(trx);
             } finally {
                 btnPrint.innerHTML = originalText;
                 btnPrint.disabled = false;
@@ -1722,9 +1746,10 @@ function closeInvoiceModal() {
     document.getElementById('invoice-modal').classList.add('hidden');
 }
 
-async function printThermal(trxId) {
-    const trx = transactions.find(t => t.id === trxId); 
-    if (!trx) return;
+async function printThermal(trxOrId) {
+    // Preview checkout mempunyai data lengkap sebelum listener Firebase memperbarui transactions.
+    const trx = trxOrId && typeof trxOrId === 'object' ? trxOrId : transactions.find(t => String(t.id) === String(trxOrId));
+    if (!trx) return alert('Data nota tidak ditemukan untuk dicetak.');
     
     if (!navigator.bluetooth) return alert("Peringatan: Browser tidak mendukung Bluetooth Web.");
     
@@ -1765,10 +1790,10 @@ async function printThermal(trxId) {
         let subTxt = `Rp ${sub.toLocaleString('id-ID')}`;
         await w("Subtotal" + " ".repeat(32 - (8 + subTxt.length)) + subTxt + "\n");
         
-        if (trx.discount > 0) {
-            let dTxt = `-Rp ${trx.discount.toLocaleString('id-ID')}`;
-            const discLabel = `Diskon (${formatDiscountPercent(getTransactionDiscountPercent(trx, sub))}%)`;
-            await w(discLabel + " ".repeat(Math.max(1, 32 - (discLabel.length + dTxt.length))) + dTxt + "\n");
+        const receiptDiscount = getReceiptDiscountInfo(trx, sub);
+        if (receiptDiscount.visible) {
+            const discountAmountText = `-Rp ${receiptDiscount.amount.toLocaleString('id-ID')}`;
+            await w(formatThermalAmountLine(receiptDiscount.label, discountAmountText));
         }
         
         await w(B1); 
