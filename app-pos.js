@@ -1508,7 +1508,16 @@ function openInvoiceModal(trx) {
     html += `<div class="flex justify-between text-[11px] text-gray-600"><span>Subtotal</span><span>Rp ${sub.toLocaleString('id-ID')}</span></div>`;
     
     if (trx.discount > 0) {
-        html += `<div class="flex justify-between text-[11px] text-red-600 font-bold"><span>Diskon</span><span>-Rp ${trx.discount.toLocaleString('id-ID')}</span></div>`;
+        // BUGFIX: nilai diskon yang tersimpan adalah persentase, jadi jangan pakai "Rp" untuk diskon persen
+        const discPct = parseInt(trx.discount) || 0;
+        let discLabel = "Diskon", discVal;
+        if (discPct <= 100) {
+            discLabel = `Diskon (${discPct}%)`;
+            discVal = `-${Math.round((discPct / 100) * sub).toLocaleString('id-ID')}`;
+        } else {
+            discVal = `-Rp ${discPct.toLocaleString('id-ID')}`;
+        }
+        html += `<div class="flex justify-between text-[11px] text-red-600 font-bold"><span>${discLabel}</span><span>${discVal}</span></div>`;
     }
     
     html += `
@@ -1597,9 +1606,20 @@ async function printThermal(trxId) {
         let subTxt = `Rp ${sub.toLocaleString('id-ID')}`;
         await w("Subtotal" + " ".repeat(32 - (8 + subTxt.length)) + subTxt + "\n");
         
-        if (trx.discount > 0) {
-            let dTxt = `-Rp ${trx.discount.toLocaleString('id-ID')}`;
-            await w("Diskon" + " ".repeat(32 - (6 + dTxt.length)) + dTxt + "\n");
+        // BUGFIX: diskon disimpan dalam bentuk persentase, jangan cetak "Rp" untuk diskon persen
+        const rawDisc = parseInt(trx.discount) || 0;
+        if (rawDisc > 0 && sub > 0) {
+            let dTxt, discLabel;
+            if (rawDisc <= 100) {
+                // Data baru / data lama yang benar: nilai = persentase -> tampilkan nominal rupiah TANPA "Rp" + label persen
+                discLabel = `Diskon (${rawDisc}%)`;
+                dTxt = `-${Math.round((rawDisc / 100) * sub).toLocaleString('id-ID')}`;
+            } else {
+                // Data lama yang tersimpan sebagai nominal rupiah -> tetap pakai "Rp"
+                discLabel = "Diskon";
+                dTxt = `-Rp ${rawDisc.toLocaleString('id-ID')}`;
+            }
+            await w(discLabel + " ".repeat(Math.max(1, 32 - (discLabel.length + dTxt.length))) + dTxt + "\n");
         }
         
         await w(B1); 
