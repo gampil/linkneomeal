@@ -1452,22 +1452,59 @@ function exportToExcel() {
 // ------------------------------------------------------------------------
 // BLUETOOTH PRINTING
 // ------------------------------------------------------------------------
+// Daftar UUID layanan printer termal Bluetooth yang umum dipakai.
+// 18f0 = standar printer termal, ff00/fff2/ae30 = dipakai banyak merek EPPOS/Goojprt/Xprinter.
+const BLE_PRINT_SERVICES = [
+    '000018f0-0000-1000-8000-00805f9b34fb',
+    '0000ff00-0000-1000-8000-00805f9b34fb',
+    '0000fff2-0000-1000-8000-00805f9b34fb',
+    '0000ae30-0000-1000-8000-00805f9b34fb'
+];
+
 async function connectBluetooth() {
     if (isConnectingBle) return; isConnectingBle = true;
     const btn = document.getElementById('btn-bluetooth-txt'); btn.innerHTML = `<i class="fa-solid fa-spinner animate-spin"></i>...`;
     try {
+        // FILTER LONGGAR: jika printer tidak advertise service 18f0 atau namanya tidak
+        // cocok dengan prefix di bawah, perangkat tetap muncul di daftar pilihan.
+        // Ini memperbaiki masalah "driver/device ga kebaca" pada printer EPPOS portable.
         bleDevice = await navigator.bluetooth.requestDevice({
-            filters: [{ services: ['000018f0-0000-1000-8000-00805f9b34fb'] }, { namePrefix: 'RPP' }, { namePrefix: 'MTP' }, { namePrefix: 'PT' }],
-            optionalServices: ['000018f0-0000-1000-8000-00805f9b34fb', '0000ff00-0000-1000-8000-00805f9b34fb']
+            filters: [
+                { services: BLE_PRINT_SERVICES },
+                { namePrefix: 'RPP' }, { namePrefix: 'MPP' }, { namePrefix: 'MTP' },
+                { namePrefix: 'PT' },  { namePrefix: 'XP-' }, { namePrefix: 'EPP' },
+                { namePrefix: 'Printer' }
+            ],
+            optionalServices: BLE_PRINT_SERVICES
         });
         bleDevice.addEventListener('gattserverdisconnected', onBluetoothDisconnected);
         const srv = await bleDevice.gatt.connect();
-        let svc; try { svc = await srv.getPrimaryService('000018f0-0000-1000-8000-00805f9b34fb'); } catch(e) { svc = await srv.getPrimaryService('0000ff00-0000-1000-8000-00805f9b34fb'); }
+        // Cari service printer yang tersedia (coba semua UUID umum).
+        let svc = null;
+        for (const uuid of BLE_PRINT_SERVICES) {
+            try { svc = await srv.getPrimaryService(uuid); break; } catch (e) { /* coba UUID berikutnya */ }
+        }
+        // FALLBACK: jika tidak ada service yang cocok berdasarkan UUID, ambil service pertama
+        // yang punya characteristic writable. Banyak printer EPPOS memakai UUID non-standar.
+        if (!svc) {
+            const allServices = await srv.getPrimaryServices();
+            for (const s of allServices) {
+                try {
+                    const cs = await s.getCharacteristics();
+                    if (cs.some(c => c.properties.write || c.properties.writeWithoutResponse)) { svc = s; break; }
+                } catch (e) { /* lanjut ke service berikutnya */ }
+            }
+        }
+        if (!svc) throw new Error("Service printer tidak ditemukan.");
         const chars = await svc.getCharacteristics();
-        bleCharacteristic = chars.find(c => c.properties.write || c.properties.writeWithoutResponse);
+        // Utamakan writeWithResponse, lalu writeWithoutResponse.
+        bleCharacteristic = chars.find(c => c.properties.write) || chars.find(c => c.properties.writeWithoutResponse);
         if (bleCharacteristic) { btn.innerText = "Terhubung ✅"; isConnectingBle = false; return true; }
-        throw new Error("Tidak didukung.");
-    } catch (e) { btn.innerText = "Hubungkan Printer"; isConnectingBle = false; return false; }
+        throw new Error("Karakteristik write tidak ditemukan.");
+    } catch (e) {
+        console.error("Koneksi Bluetooth gagal:", e);
+        btn.innerText = "Hubungkan Printer"; isConnectingBle = false; return false;
+    }
 }
 function onBluetoothDisconnected() { bleCharacteristic = null; bleDevice = null; document.getElementById('btn-bluetooth-txt').innerText = "Hubungkan Printer"; }
 
